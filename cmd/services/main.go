@@ -12,12 +12,9 @@ func main() {
 	log.SetFlags(log.Ldate | log.Lshortfile)
 
 	// Create App
-	routingServer := routes.CreateRoutingServer()
-
-	// Setup routes
-	routingServer.SetupRoutes()
+	rs := routes.CreateRoutingServer()
 
 	// Start Server
 	log.Print("Web service server is ready...")
-	log.Fatal(http.ListenAndServe(":8080", routingServer.Router))
+	log.Fatal(http.ListenAndServe(":8080", rs.Router))
 }

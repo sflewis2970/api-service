@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
+	"github.com/gorilla/mux"
 	"github.com/sflewis2970/trivia-service/api"
 	"github.com/sflewis2970/trivia-service/common"
 	"github.com/sflewis2970/trivia-service/datastore"
@@ -16,39 +17,35 @@ import (
 var questionsDS *datastore.QuestionDS
 
 const (
-	DELIMITER     string = "-"
+	DASH          string = "-"
+	COMMA         string = ","
+	SPACE         string = " "
 	NBR_OF_GROUPS int    = 1
+	FIND_ERROR    int    = -1
 )
 
-type TriviaRequest struct {
-	Request  string `json:"request"`
-	Category string `json:"category"`
-	Limit    string `json:"limit"`
+type controllerComponents struct {
+	useLocalDB bool
+	muxRouter  *mux.Router
 }
 
-type TriviaResponse struct {
-	Request    string `json:"request"`
+var controllerComponent *controllerComponents
+
+type QuestionResponse struct {
+	QuestionID string `json:"questionid,omitempty"`
+	Question   string `json:"question"`
 	Timestamp  string `json:"timestamp"`
 	Category   string `json:"category"`
-	QuestionID string `json:"questionid"`
-	Question   string `json:"question"`
 	Choices    string `json:"choices"`
 	Warning    string `json:"warning,omitempty"`
 	Error      string `json:"error,omitempty"`
 }
 
-type QuestionAnswer struct {
-	Request    string `json:"request"`
-	QuestionID string `json:"questionid"`
+type AnswerResponse struct {
+	QuestionID string `json:"questionid,omitempty"`
 	Question   string `json:"question"`
-	Answer     string `json:"answer"`
-}
-
-type QuestionResponse struct {
-	Request    string `json:"request"`
 	Timestamp  string `json:"timestamp"`
-	QuestionID string `json:"questionid"`
-	Question   string `json:"question"`
+	Category   string `json:"category"`
 	Answer     string `json:"answer"`
 	Correct    bool   `json:"correct"`
 	Message    string `json:"message,omitempty"`
@@ -61,95 +58,118 @@ func Home(rw http.ResponseWriter, r *http.Request) {
 }
 
 func GetQuestion(rw http.ResponseWriter, r *http.Request) {
-	var tRequest TriviaRequest
+	// Extract data from request
+	vars := mux.Vars(r)
+	category := vars["category"]
+	limit := vars["limit"]
 
 	// Display a log message
 	log.Print("data received from client...")
 
-	// Decode request into JSON format
-	json.NewDecoder(r.Body).Decode(&tRequest)
-
 	// Initialize data store when needed
 	if questionsDS == nil {
 		log.Print("questions data store NOT ready...")
-		questionsDS = datastore.InitializeDataStore()
 	}
 
-	var tResponse TriviaResponse
+	var qResponse QuestionResponse
 
 	// Send request to API
-	log.Print("category: ", tRequest.Category)
-	log.Print("limit: ", tRequest.Limit)
-	apiResponseErr, apiResponses, timestamp := api.TriviaRequest(tRequest.Category, tRequest.Limit)
+	apiResponseErr, apiResponses, timestamp := api.TriviaRequest(category, limit)
+
+	// set API Response size
+	apiResponsesSize := len(apiResponses)
 
 	// Build API Response
-	tResponse.Request = tRequest.Request
-	tResponse.Timestamp = timestamp
+	qResponse.Timestamp = timestamp
 
 	if apiResponseErr != nil {
-		tResponse.Category = tRequest.Category
-		tResponse.Error = apiResponseErr.Error()
+		qResponse.Category = category
+		qResponse.Error = apiResponseErr.Error()
+	} else if apiResponsesSize == 0 {
+		qResponse.Warning = "No question was returned, select another category"
 	} else {
 		// After getting a valid response from the API, generate a question ID
-		tResponse.QuestionID = uuid.New().String()
-		tResponse.QuestionID = common.BuildUUID(tResponse.QuestionID, DELIMITER, NBR_OF_GROUPS)
-		tResponse.Category = apiResponses[0].Category
-		tResponse.Question = apiResponses[0].Question
-
-		// Add question to data store
-		questionsDS.AddQuestionAndAnswer(tResponse.QuestionID, tResponse.Question, apiResponses[0].Answer)
+		qResponse.QuestionID = uuid.New().String()
+		qResponse.QuestionID = common.BuildUUID(qResponse.QuestionID, DASH, NBR_OF_GROUPS)
+		qResponse.Category = apiResponses[0].Category
+		qResponse.Question = apiResponses[0].Question
+		questionPos := 0
 
 		// Build choices string
-		apiResponsesSize := len(apiResponses)
 		if apiResponsesSize == 1 {
-			tResponse.Choices = tResponse.Choices + apiResponses[0].Answer
+			qResponse.Choices = apiResponses[0].Answer
 		} else {
-			for idx := 0; idx < apiResponsesSize-1; idx++ {
-				tResponse.Choices = tResponse.Choices + apiResponses[idx].Answer + ", "
+			// Build choices string
+			choiceList := []string{}
+			for idx := 0; idx < apiResponsesSize; idx++ {
+				choiceList = append(choiceList, apiResponses[idx].Answer)
 			}
+
+			// Shuttle list
+			choiceList = common.ShuffleList(choiceList)
+
+			// Find answer index position
+			questionPos = common.FindPosition(choiceList, apiResponses[0].Answer)
+			if questionPos > FIND_ERROR {
+				questionPos++
+			}
+
+			// After the list has been shuffled build the string
+			qResponse.Choices = common.BuildDelimitedStr(choiceList, ",")
 		}
 
-		tResponse.Choices = tResponse.Choices + apiResponses[apiResponsesSize-1].Answer
+		// Create Q&A stuct object
+		qa := datastore.QuestionAndAnswer{}
+		qa.Question = qResponse.Question
+		qa.Category = qResponse.Category
+		qa.AnswerPos = questionPos
+		qa.Answer = apiResponses[0].Answer
+
+		// Add question to data store
+		questionsDS.AddQuestionAndAnswer(qResponse.QuestionID, qa)
 	}
 
 	// Write JSON to stream
-	json.NewEncoder(rw).Encode(tResponse)
+	json.NewEncoder(rw).Encode(qResponse)
 
 	// Display a log message
 	log.Print("data sent back to client...")
 }
 
 func AnswerQuestion(rw http.ResponseWriter, r *http.Request) {
-	var question QuestionAnswer
-
-	// Display a log message
-	log.Print("data received from client...")
-
-	// Decode request into JSON format
-	json.NewDecoder(r.Body).Decode(&question)
+	// Extract data from request
+	vars := mux.Vars(r)
+	questionID := vars["questionID"]
+	answer := vars["answer"]
 
 	// Initialize data store when needed
-	var questionResponse QuestionResponse
+	var aResponse AnswerResponse
 	if questionsDS == nil {
 		log.Print("Questions data store not ready...")
+		aResponse.Error = "Datastore unavailable"
 	} else {
-		if questionsDS.CheckAnswer(question.QuestionID, question.Answer) {
-			questionResponse.Message = "Congrats! That is correct"
-			questionResponse.Correct = true
-		} else {
-			questionResponse.Message = "Nice try! That is NOT correct"
-			questionResponse.Correct = false
-		}
+		timestamp, newQA := questionsDS.CheckAnswer(questionID, answer)
+		aResponse.Question = newQA.Question
+		aResponse.Category = newQA.Category
+		aResponse.Answer = newQA.Answer
+		aResponse.Timestamp = timestamp
+		aResponse.Message = newQA.Message
+		aResponse.Correct = newQA.Correct
 	}
 
 	// Write JSON to stream
-	json.NewEncoder(rw).Encode(questionResponse)
+	json.NewEncoder(rw).Encode(aResponse)
 
 	// Display a log message
 	log.Print("data sent back to client...")
 }
 
-func InitializeDataStore() {
+func InitializeController(muxRouter *mux.Router) {
+	// Check to see if datastore server
 	log.Print("initializing questions data store...")
 	questionsDS = datastore.InitializeDataStore()
+
+	// Controller Components
+	controllerComponent := new(controllerComponents)
+	controllerComponent.muxRouter = muxRouter
 }
