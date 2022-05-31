@@ -11,7 +11,7 @@ ADD . /app
 WORKDIR /app
 
 # Build the application
-RUN go build ./cmd/services/main.go -o main .
+RUN go build -o main ./cmd/services
 
 # Run the app in the image
 CMD ["/app/main"]
