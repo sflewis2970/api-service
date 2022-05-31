@@ -17,7 +17,15 @@ const (
 
 	TriviaURL          string = "https://trivia-by-api-ninjas.p.rapidapi.com/v1/trivia"
 	TriviaAPIHostValue string = "trivia-by-api-ninjas.p.rapidapi.com"
+
+	TriviaCategoryCount  int = 14
+	EmptyRecordCount     int = 0
+	TriviaMaxRecordCount int = 5
+	APIMaxRecordCount    int = 30
 )
+
+var CategoryList = [TriviaCategoryCount]string{"artliterature", "language", "sciencenature", "general", "fooddrink", "peopleplaces",
+	"geography", "historyholidays", "entertainment", "toysgames", "music", "mathematics", "religionmythology", "sportsleisure"}
 
 type TriviaResponse struct {
 	Category string `json:"category"`
@@ -25,7 +33,17 @@ type TriviaResponse struct {
 	Answer   string `json:"answer"`
 }
 
-func TriviaRequest(category string, limit string) (error, []TriviaResponse, string) {
+func isItemInCategoryList(item string) bool {
+	for _, category := range CategoryList {
+		if item == category {
+			return true
+		}
+	}
+
+	return false
+}
+
+func TriviaRequest(category string, limit int) (error, []TriviaResponse, string) {
 	// Build URL string
 	url := TriviaURL
 
@@ -37,15 +55,14 @@ func TriviaRequest(category string, limit string) (error, []TriviaResponse, stri
 	}
 
 	// Add limit string to the end of the url
-	limitLength := len(limit)
-	if limitLength == 0 {
-		limit = fmt.Sprint(5)
+	if limit == 0 {
+		limit = TriviaMaxRecordCount
 	}
 
 	if categoryLength > 0 {
-		url = url + "&limit=" + limit
+		url = url + "&limit=" + fmt.Sprint(limit)
 	} else {
-		url = url + "?limit=" + limit
+		url = url + "?limit=" + fmt.Sprint(limit)
 	}
 
 	// Create new http request
