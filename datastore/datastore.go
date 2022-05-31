@@ -2,7 +2,7 @@ package datastore
 
 import (
 	"log"
-	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -15,19 +15,21 @@ type QuestionDS struct {
 }
 
 type QuestionAndAnswer struct {
-	Question  string
-	Category  string
-	AnswerPos int
-	Answer    string
-	Correct   bool
-	Message   string
+	Question string
+	Category string
+	Answer   string
+	Correct  bool
+	Message  string
 }
 
 func (qds *QuestionDS) AddQuestionAndAnswer(questionID string, qa QuestionAndAnswer) {
 	qds.mapMutex.Lock()
 	defer qds.mapMutex.Unlock()
 
-	log.Printf("Adding question to map")
+	log.Print("Adding question to map")
+	log.Print("Question ID: ", questionID)
+	log.Print("Question: ", qa.Question)
+	log.Print("Answer: ", qa.Answer)
 	qds.QuestionMap[questionID] = qa
 }
 
@@ -50,18 +52,12 @@ func (qds *QuestionDS) CheckAnswer(questionID string, answer string) (string, *Q
 		newQA.Category = qa.Category
 		newQA.Answer = qa.Answer
 
-		// Convert answer string to answer number value
-		nAnswer, convErr := strconv.Atoi(answer)
-		if convErr != nil {
-			log.Print("Error converting string to number")
-		}
-
 		// Delete the record from map
 		delete(qds.QuestionMap, questionID)
 		log.Print("record deleted!")
 
 		// Check to see the client has provided the correct answer
-		if qa.AnswerPos == nAnswer {
+		if strings.TrimSpace(qa.Answer) == strings.TrimSpace(answer) {
 			newQA.Correct = true
 			newQA.Message = "Congrats! That is correct!"
 			return timestamp, newQA
