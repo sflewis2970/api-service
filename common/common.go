@@ -59,16 +59,6 @@ func BuildDelimitedStr(strs []string, delimiter string) string {
 	return newStr
 }
 
-func FindPosition(strs []string, searchVal string) int {
-	for idx, str := range strs {
-		if str == searchVal {
-			return idx
-		}
-	}
-
-	return -1
-}
-
 // Utility to move string item to a different position within the list
 func ShuffleList(strList []string) []string {
 	rand.Shuffle(len(strList), func(idx1, idx2 int) {

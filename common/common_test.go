@@ -15,19 +15,15 @@ func TestGetFormattedTime(t *testing.T) {
 	testCases := []struct {
 		timeVal       time.Time
 		timeFormatVal string
-		expectedVal   string
 	}{
-		{timeVal: timeNow, timeFormatVal: "Mon Jan 2 15:04:05 2006", expectedVal: ""},
-		{timeVal: timeNow, timeFormatVal: "", expectedVal: ""},
-		{timeVal: timeNow, timeFormatVal: "", expectedVal: ""},
-		{timeVal: timeNow, timeFormatVal: "", expectedVal: ""},
+		{timeVal: timeNow, timeFormatVal: "Mon Jan 2 15:04:05 2006"},
 	}
 
 	for _, tt := range testCases {
 		gotVal := GetFormattedTime(tt.timeVal, tt.timeFormatVal)
 
 		if len(gotVal) <= 0 {
-			t.Errorf("GetFormattedTime(%v, %v): expected results from the API call.", tt.timeVal, tt.timeFormatVal)
+			t.Errorf("GetFormattedTime(%v, %v): expected results from the API call. Got: %s", tt.timeVal, tt.timeFormatVal, gotVal)
 		}
 	}
 }

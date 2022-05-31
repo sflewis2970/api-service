@@ -21,9 +21,7 @@ func (rs *RoutingServer) setupRoutes() {
 	// Setup routes
 	rs.Router.HandleFunc("/", controllers.Home)
 	rs.Router.HandleFunc("/question", controllers.GetQuestion)
-	rs.Router.HandleFunc("/question/{category}", controllers.GetQuestion)
-	rs.Router.HandleFunc("/question/{category}/{limit}", controllers.GetQuestion)
-	rs.Router.HandleFunc("/answer/{questionID}/{answer}", controllers.AnswerQuestion)
+	rs.Router.HandleFunc("/answer", controllers.AnswerQuestion)
 }
 
 func CreateRoutingServer() *RoutingServer {
