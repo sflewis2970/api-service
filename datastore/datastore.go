@@ -3,67 +3,74 @@ package datastore
 import (
 	"log"
 	"strings"
-	"sync"
 	"time"
 
+	"github.com/patrickmn/go-cache"
 	"github.com/sflewis2970/trivia-service/common"
 )
 
+const (
+	DEFAULT_EXPIRATION int = 1  // expirastion time in minutes
+	CLEANUP_INTERVAL   int = 10 // expirastion time in minutes
+)
+
 type QuestionDS struct {
-	mapMutex    sync.Mutex
-	QuestionMap map[string]QuestionAndAnswer
+	memCache *cache.Cache
 }
 
 type QuestionAndAnswer struct {
 	Question string
 	Category string
+	Response string
 	Answer   string
 	Correct  bool
 	Message  string
 }
 
 func (qds *QuestionDS) AddQuestionAndAnswer(questionID string, qa QuestionAndAnswer) {
-	qds.mapMutex.Lock()
-	defer qds.mapMutex.Unlock()
-
 	log.Print("Adding question to map")
 	log.Print("Question ID: ", questionID)
 	log.Print("Question: ", qa.Question)
 	log.Print("Answer: ", qa.Answer)
-	qds.QuestionMap[questionID] = qa
+
+	qds.memCache.Set(questionID, qa, cache.DefaultExpiration)
 }
 
-func (qds *QuestionDS) CheckAnswer(questionID string, answer string) (string, *QuestionAndAnswer) {
-	qds.mapMutex.Lock()
-	defer qds.mapMutex.Unlock()
-
+func (qds *QuestionDS) CheckAnswer(questionID string, response string) (string, *QuestionAndAnswer) {
 	newQA := new(QuestionAndAnswer)
 	log.Printf("Looking up question ID: %v", questionID)
-	qa, itemFound := qds.QuestionMap[questionID]
-
-	// Get timestamp right after checking to see if item is in map
-	timestamp := common.GetFormattedTime(time.Now(), "Mon Jan 2 15:04:05 2006")
+	item, itemFound := qds.memCache.Get(questionID)
+	timestamp := ""
 
 	if itemFound {
-		log.Printf("Found question in map: %v", questionID)
-
-		// Update fields for new Question and Answer
-		newQA.Question = qa.Question
-		newQA.Category = qa.Category
-		newQA.Answer = qa.Answer
-
-		// Delete the record from map
-		delete(qds.QuestionMap, questionID)
-		log.Print("record deleted!")
-
-		// Check to see the client has provided the correct answer
-		if strings.TrimSpace(qa.Answer) == strings.TrimSpace(answer) {
-			newQA.Correct = true
-			newQA.Message = "Congrats! That is correct!"
-			return timestamp, newQA
+		qa, ok := item.(QuestionAndAnswer)
+		if !ok {
+			log.Print("Error converting interface object: ", item)
 		} else {
-			newQA.Correct = false
-			newQA.Message = "Nice try! That is NOT correct"
+			// Get timestamp right after checking to see if item is in map
+			timestamp = common.GetFormattedTime(time.Now(), "Mon Jan 2 15:04:05 2006")
+
+			log.Print("Found question in map: ", questionID)
+
+			// Update fields for new Question and Answer
+			newQA.Question = qa.Question
+			newQA.Category = qa.Category
+			newQA.Response = response
+			newQA.Answer = qa.Answer
+
+			// Delete the record from map
+			qds.memCache.Delete(questionID)
+			log.Print("record deleted!")
+
+			// Check to see the client has provided the correct answer
+			if strings.TrimSpace(qa.Answer) == strings.TrimSpace(response) {
+				newQA.Correct = true
+				newQA.Message = "Congrats! That is correct!"
+				return timestamp, newQA
+			} else {
+				newQA.Correct = false
+				newQA.Message = "Nice try! That is NOT correct"
+			}
 		}
 	} else {
 		newQA.Correct = false
@@ -76,7 +83,7 @@ func (qds *QuestionDS) CheckAnswer(questionID string, answer string) (string, *Q
 func InitializeDataStore() *QuestionDS {
 	ds := new(QuestionDS)
 
-	ds.QuestionMap = make(map[string]QuestionAndAnswer)
+	ds.memCache = cache.New(time.Duration(DEFAULT_EXPIRATION)*time.Minute, time.Duration(CLEANUP_INTERVAL)*time.Minute)
 
 	return ds
 }
