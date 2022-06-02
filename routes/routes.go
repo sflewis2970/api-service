@@ -20,8 +20,8 @@ func (rs *RoutingServer) setupRoutes() {
 
 	// Setup routes
 	rs.Router.HandleFunc("/", controllers.Home)
-	rs.Router.HandleFunc("/question", controllers.GetQuestion)
-	rs.Router.HandleFunc("/answer", controllers.AnswerQuestion)
+	rs.Router.HandleFunc("/api/v1/question", controllers.GetQuestion)
+	rs.Router.HandleFunc("/api/v1/answer", controllers.AnswerQuestion)
 }
 
 func CreateRoutingServer() *RoutingServer {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -38,11 +39,6 @@ type controllerComponents struct {
 
 var controllerComponent *controllerComponents
 
-type QuestionRequest struct {
-	Category string `json:"category"`
-	Limit    int    `json:"limit"`
-}
-
 type QuestionResponse struct {
 	QuestionID string `json:"questionid"`
 	Question   string `json:"question"`
@@ -55,13 +51,14 @@ type QuestionResponse struct {
 
 type AnswerRequest struct {
 	QuestionID string `json:"questionid"`
-	Answer     string `json:"answer"`
+	Response   string `json:"response"`
 }
 
 type AnswerResponse struct {
 	Question  string `json:"question"`
 	Timestamp string `json:"timestamp"`
 	Category  string `json:"category"`
+	Response  string `json:"response"`
 	Answer    string `json:"answer"`
 	Correct   bool   `json:"correct"`
 	Message   string `json:"message,omitempty"`
@@ -74,12 +71,18 @@ func Home(rw http.ResponseWriter, r *http.Request) {
 }
 
 func GetQuestion(rw http.ResponseWriter, r *http.Request) {
-	var qRequest QuestionRequest
+	categoryStr := r.URL.Query().Get("category")
+	limitStr := r.URL.Query().Get("limit")
+	limit := 0
+	var convErr error
 
-	// Read JSON from stream
-	json.NewDecoder(r.Body).Decode(&qRequest)
-
-	log.Print("qRequest: ", qRequest)
+	// Convert limit string to limit number
+	if len(limitStr) > 0 {
+		limit, convErr = strconv.Atoi(limitStr)
+		if convErr != nil {
+			log.Print("Conversion error: ", convErr.Error())
+		}
+	}
 
 	// Display a log message
 	log.Print("data received from client...")
@@ -91,7 +94,7 @@ func GetQuestion(rw http.ResponseWriter, r *http.Request) {
 		log.Print("questions data store NOT ready...")
 	} else {
 		// Send request to API
-		apiResponseErr, apiResponses, timestamp := api.TriviaRequest(qRequest.Category, qRequest.Limit)
+		apiResponseErr, apiResponses, timestamp := api.TriviaRequest(categoryStr, limit)
 
 		// Get API Response size
 		apiResponsesSize := len(apiResponses)
@@ -100,7 +103,7 @@ func GetQuestion(rw http.ResponseWriter, r *http.Request) {
 		qResponse.Timestamp = timestamp
 
 		if apiResponseErr != nil {
-			qResponse.Category = qRequest.Category
+			qResponse.Category = categoryStr
 			qResponse.Error = apiResponseErr.Error()
 		} else if apiResponsesSize == 0 {
 			qResponse.Warning = "No question was returned, select another category"
@@ -158,9 +161,10 @@ func AnswerQuestion(rw http.ResponseWriter, r *http.Request) {
 		log.Print("Questions data store not ready...")
 		aResponse.Error = "Datastore unavailable"
 	} else {
-		timestamp, newQA := questionsDS.CheckAnswer(aRequest.QuestionID, aRequest.Answer)
+		timestamp, newQA := questionsDS.CheckAnswer(aRequest.QuestionID, aRequest.Response)
 		aResponse.Question = newQA.Question
 		aResponse.Category = newQA.Category
+		aResponse.Response = newQA.Response
 		aResponse.Answer = newQA.Answer
 		aResponse.Timestamp = timestamp
 		aResponse.Message = newQA.Message
