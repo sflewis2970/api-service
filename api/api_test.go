@@ -11,23 +11,8 @@ func TestTriviaRequest(t *testing.T) {
 		limitVal    int
 	}{
 		{categoryVal: ""},
-		{categoryVal: "", limitVal: 1},
-		{categoryVal: "", limitVal: 5},
-		{categoryVal: "", limitVal: 10},
-		{categoryVal: "", limitVal: 20},
-		{categoryVal: "", limitVal: 40},
-		{categoryVal: "general"},
-		{categoryVal: "general", limitVal: 1},
-		{categoryVal: "general", limitVal: 5},
-		{categoryVal: "general", limitVal: 10},
-		{categoryVal: "general", limitVal: 20},
-		{categoryVal: "general", limitVal: 40},
-		{categoryVal: "lang"},
-		{categoryVal: "lang", limitVal: 1},
-		{categoryVal: "lang", limitVal: 5},
-		{categoryVal: "lang", limitVal: 10},
-		{categoryVal: "lang", limitVal: 20},
-		{categoryVal: "lang", limitVal: 40},
+		{categoryVal: "mathematics"},
+		{categoryVal: "sfl"},
 	}
 
 	for _, tt := range testCases {
