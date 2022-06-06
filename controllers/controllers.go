@@ -101,38 +101,48 @@ func GetQuestion(rw http.ResponseWriter, r *http.Request) {
 	if questionsDS == nil {
 		log.Print("questions data store NOT ready...")
 	} else {
-		responsesReady := false
-
+		requestComplete := false
 		var apiResponseErr error
 		var apiResponses []api.TriviaResponse
+		apiResponsesSize := 0
 		timestamp := ""
 
-		for !responsesReady {
+		for !requestComplete {
 			// Send request to API
 			apiResponseErr, apiResponses, timestamp = api.TriviaRequest(categoryStr, limit)
 
-			if !containsDuplicates(apiResponses) {
-				log.Print("No duplicates found...")
-				responsesReady = true
+			// Get API Response size
+			apiResponsesSize = len(apiResponses)
+
+			if apiResponsesSize > 0 {
+				if !containsDuplicates(apiResponses) {
+					log.Print("No duplicates found...")
+					requestComplete = true
+				} else {
+					log.Print("Found duplicates...")
+				}
+
+				log.Print("Question: ", apiResponses[0].Question)
 			} else {
-				log.Print("Found duplicates...")
+				requestComplete = true
 			}
-
-			log.Print("Question: ", apiResponses[0].Question)
 		}
-
-		// Get API Response size
-		apiResponsesSize := len(apiResponses)
 
 		// Build API Response
 		qResponse.Timestamp = timestamp
 
 		if apiResponseErr != nil {
+			// If an error occurs let the client know
 			qResponse.Category = categoryStr
 			qResponse.Error = apiResponseErr.Error()
 		} else if apiResponsesSize == 0 {
+			// If no error occurs but no response is returned
+			// let the client know, the most likely case where this happens
+			// is when the client supplies a category that does not exist
 			qResponse.Warning = "No question was returned, select another category"
 		} else {
+			// Since the client is no longer allowed to supply a limit
+			// there should be five items returned from the API
 			// After getting a valid response from the API, generate a question ID
 			qResponse.QuestionID = uuid.New().String()
 			qResponse.QuestionID = common.BuildUUID(qResponse.QuestionID, DASH, NBR_OF_GROUPS)
@@ -140,21 +150,16 @@ func GetQuestion(rw http.ResponseWriter, r *http.Request) {
 			qResponse.Question = apiResponses[0].Question
 
 			// Build choices string
-			if apiResponsesSize == 1 {
-				qResponse.Choices = apiResponses[0].Answer
-			} else {
-				// Build choices string
-				choiceList := []string{}
-				for idx := 0; idx < apiResponsesSize; idx++ {
-					choiceList = append(choiceList, apiResponses[idx].Answer)
-				}
-
-				// Shuttle list
-				choiceList = common.ShuffleList(choiceList)
-
-				// After the list has been shuffled build the string
-				qResponse.Choices = common.BuildDelimitedStr(choiceList, ",")
+			choiceList := []string{}
+			for idx := 0; idx < apiResponsesSize; idx++ {
+				choiceList = append(choiceList, apiResponses[idx].Answer)
 			}
+
+			// Shuttle list
+			choiceList = common.ShuffleList(choiceList)
+
+			// After the list has been shuffled build the string
+			qResponse.Choices = common.BuildDelimitedStr(choiceList, ",")
 
 			// Create data store table struct
 			dsTable := datastore.DataStoreTable{}
