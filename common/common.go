@@ -1,7 +1,13 @@
 package common
 
 import (
+	"bytes"
+	"encoding/json"
+	"io/ioutil"
+	"log"
 	"math/rand"
+	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -66,4 +72,52 @@ func ShuffleList(strList []string) []string {
 	})
 
 	return strList
+}
+
+func GetHTTPRequest(url string, payload interface{}) (*http.Response, error) {
+	response, getErr := http.Get(url)
+	if getErr != nil {
+		return nil, getErr
+	}
+
+	return response, nil
+}
+
+func ReadAllBody(response *http.Response) ([]byte, error) {
+	// Read the response body
+	body, readErr := ioutil.ReadAll(response.Body)
+	if readErr != nil {
+		return nil, readErr
+	}
+
+	return body, nil
+}
+
+func SendFormRequest(destination string, payload interface{}) (*http.Response, error) {
+	data := url.Values{
+		"name": {"John Doe"},
+		"city": {"San Diego"},
+	}
+
+	response, postErr := http.PostForm(destination, data)
+	if postErr != nil {
+		return nil, postErr
+	}
+
+	return response, nil
+}
+
+func SendJSONRequest(destination string, payload interface{}) (*http.Response, error) {
+	values := map[string]string{"name": "John Doe", "city": "san Diego"}
+	jsonData, marshalErr := json.Marshal(values)
+	if marshalErr != nil {
+		log.Print("Error marshaliung data" + marshalErr.Error())
+	}
+
+	response, postErr := http.Post(destination, "application/json", bytes.NewBuffer(jsonData))
+	if postErr != nil {
+		return nil, postErr
+	}
+
+	return response, nil
 }
