@@ -18,6 +18,12 @@ type QuestionDS struct {
 	memCache *cache.Cache
 }
 
+type DataStoreTable struct {
+	Question string
+	Category string
+	Answer   string
+}
+
 type QuestionAndAnswer struct {
 	Question string
 	Category string
@@ -27,13 +33,14 @@ type QuestionAndAnswer struct {
 	Message  string
 }
 
-func (qds *QuestionDS) AddQuestionAndAnswer(questionID string, qa QuestionAndAnswer) {
+func (qds *QuestionDS) AddQuestionAndAnswer(questionID string, dst DataStoreTable) {
 	log.Print("Adding question to map")
 	log.Print("Question ID: ", questionID)
-	log.Print("Question: ", qa.Question)
-	log.Print("Answer: ", qa.Answer)
+	log.Print("Question: ", dst.Question)
+	log.Print("Category: ", dst.Category)
+	log.Print("Answer: ", dst.Answer)
 
-	qds.memCache.Set(questionID, qa, cache.DefaultExpiration)
+	qds.memCache.Set(questionID, dst, cache.DefaultExpiration)
 }
 
 func (qds *QuestionDS) CheckAnswer(questionID string, response string) (string, *QuestionAndAnswer) {
@@ -43,7 +50,7 @@ func (qds *QuestionDS) CheckAnswer(questionID string, response string) (string, 
 	timestamp := ""
 
 	if itemFound {
-		qa, ok := item.(QuestionAndAnswer)
+		dst, ok := item.(DataStoreTable)
 		if !ok {
 			log.Print("Error converting interface object: ", item)
 		} else {
@@ -53,17 +60,17 @@ func (qds *QuestionDS) CheckAnswer(questionID string, response string) (string, 
 			log.Print("Found question in map: ", questionID)
 
 			// Update fields for new Question and Answer
-			newQA.Question = qa.Question
-			newQA.Category = qa.Category
+			newQA.Question = dst.Question
+			newQA.Category = dst.Category
 			newQA.Response = response
-			newQA.Answer = qa.Answer
+			newQA.Answer = dst.Answer
 
 			// Delete the record from map
 			qds.memCache.Delete(questionID)
 			log.Print("record deleted!")
 
 			// Check to see the client has provided the correct answer
-			if strings.TrimSpace(qa.Answer) == strings.TrimSpace(response) {
+			if strings.TrimSpace(dst.Answer) == strings.TrimSpace(response) {
 				newQA.Correct = true
 				newQA.Message = "Congrats! That is correct!"
 				return timestamp, newQA
