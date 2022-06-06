@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strconv"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -70,19 +69,28 @@ func Home(rw http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(rw, "Welcome to the trivia service app\n")
 }
 
+// containsDuplicates checks the slice for any duplicate items
+func containsDuplicates(items []api.TriviaResponse) bool {
+	// Initialize the map for usage
+	itemsMap := make(map[string]int)
+
+	// Since maps uses unique keys, use the string value of answer to be the key
+	for idx, item := range items {
+		itemsMap[item.Answer] = idx + 1
+	}
+
+	// If the size of the map is the same size of the slice, then there are no duplicates
+	if len(itemsMap) != len(items) {
+		return true
+	}
+
+	// Otherwise return false
+	return false
+}
+
 func GetQuestion(rw http.ResponseWriter, r *http.Request) {
 	categoryStr := r.URL.Query().Get("category")
-	limitStr := r.URL.Query().Get("limit")
 	limit := 0
-	var convErr error
-
-	// Convert limit string to limit number
-	if len(limitStr) > 0 {
-		limit, convErr = strconv.Atoi(limitStr)
-		if convErr != nil {
-			log.Print("Conversion error: ", convErr.Error())
-		}
-	}
 
 	// Display a log message
 	log.Print("data received from client...")
@@ -93,8 +101,25 @@ func GetQuestion(rw http.ResponseWriter, r *http.Request) {
 	if questionsDS == nil {
 		log.Print("questions data store NOT ready...")
 	} else {
-		// Send request to API
-		apiResponseErr, apiResponses, timestamp := api.TriviaRequest(categoryStr, limit)
+		responsesReady := false
+
+		var apiResponseErr error
+		var apiResponses []api.TriviaResponse
+		timestamp := ""
+
+		for !responsesReady {
+			// Send request to API
+			apiResponseErr, apiResponses, timestamp = api.TriviaRequest(categoryStr, limit)
+
+			if !containsDuplicates(apiResponses) {
+				log.Print("No duplicates found...")
+				responsesReady = true
+			} else {
+				log.Print("Found duplicates...")
+			}
+
+			log.Print("Question: ", apiResponses[0].Question)
+		}
 
 		// Get API Response size
 		apiResponsesSize := len(apiResponses)
@@ -131,14 +156,14 @@ func GetQuestion(rw http.ResponseWriter, r *http.Request) {
 				qResponse.Choices = common.BuildDelimitedStr(choiceList, ",")
 			}
 
-			// Create Q&A stuct object
-			qa := datastore.QuestionAndAnswer{}
-			qa.Question = qResponse.Question
-			qa.Category = qResponse.Category
-			qa.Answer = apiResponses[0].Answer
+			// Create data store table struct
+			dsTable := datastore.DataStoreTable{}
+			dsTable.Question = qResponse.Question
+			dsTable.Category = qResponse.Category
+			dsTable.Answer = apiResponses[0].Answer
 
 			// Add question to data store
-			questionsDS.AddQuestionAndAnswer(qResponse.QuestionID, qa)
+			questionsDS.AddQuestionAndAnswer(qResponse.QuestionID, dsTable)
 		}
 	}
 
