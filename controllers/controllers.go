@@ -1,20 +1,14 @@
 package controllers
 
 import (
-	"encoding/json"
-	"fmt"
 	"log"
-	"net/http"
 
-	"github.com/google/uuid"
-	"github.com/gorilla/mux"
 	"github.com/sflewis2970/trivia-service/api"
-	"github.com/sflewis2970/trivia-service/common"
 	"github.com/sflewis2970/trivia-service/datastore"
 )
 
-// Global questions datastore
-var questionsDS *datastore.QuestionDS
+// Global controller component
+var ctrlComponent *controllerComponent
 
 const (
 	DASH             string = "-"
@@ -31,44 +25,7 @@ const (
 	EMPTY_WARNING    int    = 0
 )
 
-type controllerComponents struct {
-	useLocalDB bool
-	muxRouter  *mux.Router
-}
-
-var controllerComponent *controllerComponents
-
-type QuestionResponse struct {
-	QuestionID string `json:"questionid"`
-	Question   string `json:"question"`
-	Category   string `json:"category"`
-	Choices    string `json:"choices"`
-	Timestamp  string `json:"timestamp"`
-	Warning    string `json:"warning,omitempty"`
-	Error      string `json:"error,omitempty"`
-}
-
-type AnswerRequest struct {
-	QuestionID string `json:"questionid"`
-	Response   string `json:"response"`
-}
-
-type AnswerResponse struct {
-	Question  string `json:"question"`
-	Timestamp string `json:"timestamp"`
-	Category  string `json:"category"`
-	Response  string `json:"response"`
-	Answer    string `json:"answer"`
-	Correct   bool   `json:"correct"`
-	Message   string `json:"message,omitempty"`
-	Warning   string `json:"warning,omitempty"`
-	Error     string `json:"error,omitempty"`
-}
-
-func Home(rw http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(rw, "Welcome to the trivia service app\n")
-}
-
+// Unexported package functions
 // containsDuplicates checks the slice for any duplicate items
 func containsDuplicates(items []api.TriviaResponse) bool {
 	// Initialize the map for usage
@@ -88,137 +45,19 @@ func containsDuplicates(items []api.TriviaResponse) bool {
 	return false
 }
 
-func GetQuestion(rw http.ResponseWriter, r *http.Request) {
-	categoryStr := r.URL.Query().Get("category")
-	limit := 0
-
-	// Display a log message
-	log.Print("data received from client...")
-
-	var qResponse QuestionResponse
-
-	// Initialize data store when needed
-	if questionsDS == nil {
-		log.Print("questions data store NOT ready...")
-	} else {
-		requestComplete := false
-		var apiResponseErr error
-		var apiResponses []api.TriviaResponse
-		apiResponsesSize := 0
-		timestamp := ""
-
-		for !requestComplete {
-			// Send request to API
-			apiResponseErr, apiResponses, timestamp = api.TriviaRequest(categoryStr, limit)
-
-			// Get API Response size
-			apiResponsesSize = len(apiResponses)
-
-			if apiResponsesSize > 0 {
-				if !containsDuplicates(apiResponses) {
-					log.Print("No duplicates found...")
-					requestComplete = true
-				} else {
-					log.Print("Found duplicates...")
-				}
-
-				log.Print("Question: ", apiResponses[0].Question)
-			} else {
-				requestComplete = true
-			}
-		}
-
-		// Build API Response
-		qResponse.Timestamp = timestamp
-
-		if apiResponseErr != nil {
-			// If an error occurs let the client know
-			qResponse.Category = categoryStr
-			qResponse.Error = apiResponseErr.Error()
-		} else if apiResponsesSize == 0 {
-			// If no error occurs but no response is returned
-			// let the client know, the most likely case where this happens
-			// is when the client supplies a category that does not exist
-			qResponse.Warning = "No question was returned, select another category"
-		} else {
-			// Since the client is no longer allowed to supply a limit
-			// there should be five items returned from the API
-			// After getting a valid response from the API, generate a question ID
-			qResponse.QuestionID = uuid.New().String()
-			qResponse.QuestionID = common.BuildUUID(qResponse.QuestionID, DASH, NBR_OF_GROUPS)
-			qResponse.Category = apiResponses[0].Category
-			qResponse.Question = apiResponses[0].Question
-
-			// Build choices string
-			choiceList := []string{}
-			for idx := 0; idx < apiResponsesSize; idx++ {
-				choiceList = append(choiceList, apiResponses[idx].Answer)
-			}
-
-			// Shuttle list
-			choiceList = common.ShuffleList(choiceList)
-
-			// After the list has been shuffled build the string
-			qResponse.Choices = common.BuildDelimitedStr(choiceList, ",")
-
-			// Create data store table struct
-			dsTable := datastore.DataStoreTable{}
-			dsTable.Question = qResponse.Question
-			dsTable.Category = qResponse.Category
-			dsTable.Answer = apiResponses[0].Answer
-
-			// Add question to data store
-			questionsDS.AddQuestionAndAnswer(qResponse.QuestionID, dsTable)
-		}
-	}
-
-	// Write JSON to stream
-	json.NewEncoder(rw).Encode(qResponse)
-
-	// Display a log message
-	log.Print("data sent back to client...")
+type controllerComponent struct {
+	ds *datastore.QuestionDS
 }
 
-func AnswerQuestion(rw http.ResponseWriter, r *http.Request) {
-	var aRequest AnswerRequest
-
-	// Read JSON from stream
-	json.NewDecoder(r.Body).Decode(&aRequest)
-
-	// Initialize data store when needed
-	var aResponse AnswerResponse
-	if questionsDS == nil {
-		log.Print("Questions data store not ready...")
-		aResponse.Error = "Datastore unavailable"
-	} else {
-		timestamp, newQA := questionsDS.CheckAnswer(aRequest.QuestionID, aRequest.Response)
-		aResponse.Question = newQA.Question
-		aResponse.Category = newQA.Category
-		aResponse.Response = newQA.Response
-		aResponse.Answer = newQA.Answer
-		aResponse.Timestamp = timestamp
-		aResponse.Message = newQA.Message
-		aResponse.Correct = newQA.Correct
-	}
-
-	// Write JSON to stream
-	json.NewEncoder(rw).Encode(aResponse)
-
-	// Display a log message
-	log.Print("data sent back to client...")
-}
-
-func initializeDS() {
-	// Check to see if datastore server
+func (c *controllerComponent) initializeDataStore() {
+	// Create datastore component
 	log.Print("initializing questions data store...")
-	questionsDS = datastore.InitializeDataStore()
+	c.ds = datastore.CreateDataStore()
 }
 
-func InitializeController(muxRouter *mux.Router) {
-	// Initialize datastore
-	initializeDS()
-
-	// Controller Components
-	controllerComponent := new(controllerComponents)
-	controllerComponent.muxRouter = muxRouter
+// Export functions
+func InitializeController() {
+	// Create controller component
+	ctrlComponent = new(controllerComponent)
+	ctrlComponent.initializeDataStore()
 }
