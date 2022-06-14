@@ -8,7 +8,6 @@ func TestTriviaRequest(t *testing.T) {
 	// Test cases
 	testCases := []struct {
 		categoryVal string
-		limitVal    int
 	}{
 		{categoryVal: ""},
 		{categoryVal: "mathematics"},
@@ -16,71 +15,54 @@ func TestTriviaRequest(t *testing.T) {
 	}
 
 	for _, tt := range testCases {
-		gotError, gotVals, _ := TriviaRequest(tt.categoryVal, tt.limitVal)
+		limitVal := 0
+		gotVals, gotTimestamp, gotError := TriviaRequest(tt.categoryVal, limitVal)
 
 		gotValsSize := len(gotVals)
 		categoryValSize := len(tt.categoryVal)
 
 		// Category and limit have empty values
-		if categoryValSize == 0 && tt.limitVal == 0 {
+		if categoryValSize == 0 {
 			if gotError != nil {
-				t.Errorf("TriviaRequest(%v, %v): error not expected, got %v", tt.categoryVal, tt.limitVal, gotError)
+				t.Errorf("TriviaRequest(%v, %v): error not expected, got %v", tt.categoryVal, limitVal, gotError)
 			}
 
 			if gotValsSize != TriviaMaxRecordCount {
-				t.Errorf("TriviaRequest(%v, %v): did not return the correct number of records, got %d - expected: %d", tt.categoryVal, tt.limitVal, gotValsSize, TriviaMaxRecordCount)
-			}
-		}
-
-		// Category has a empty value while limit has a value greater than 0
-		if categoryValSize == 0 && tt.limitVal > 0 {
-			if gotError != nil {
-				t.Errorf("TriviaRequest(%v, %v): error not expected, got %v", tt.categoryVal, tt.limitVal, gotError)
+				t.Errorf("TriviaRequest(%v, %v): did not return the correct number of records, got %d - expected: %d", tt.categoryVal, limitVal, gotValsSize, TriviaMaxRecordCount)
 			}
 
-			if tt.limitVal <= APIMaxRecordCount && gotValsSize != tt.limitVal {
-				t.Errorf("TriviaRequest(%v, %v): did not return the correct number of records, got %d - expected: %d", tt.categoryVal, tt.limitVal, gotValsSize, tt.limitVal)
-			}
-
-			if tt.limitVal > APIMaxRecordCount && gotValsSize != APIMaxRecordCount {
-				t.Errorf("TriviaRequest(%v, %v): did not return the correct number of records, got %d - expected: %d", tt.categoryVal, tt.limitVal, gotValsSize, APIMaxRecordCount)
+			if len(gotTimestamp) == 0 {
+				t.Errorf("TriviaRequest(%v, %v): did not return a valid time stamp, got %s", tt.categoryVal, limitVal, gotTimestamp)
 			}
 		}
 
 		// Category has a non-empty value while limit has an empty
-		if categoryValSize > 0 && isItemInCategoryList(tt.categoryVal) && tt.limitVal == 0 {
+		if categoryValSize > 0 && isItemInCategoryList(tt.categoryVal) {
 			if gotError != nil {
-				t.Errorf("TriviaRequest(%v, %v): error not expected, got %v", tt.categoryVal, tt.limitVal, gotError)
+				t.Errorf("TriviaRequest(%v, %v): error not expected, got %v", tt.categoryVal, limitVal, gotError)
 			}
 
 			if gotValsSize != TriviaMaxRecordCount {
-				t.Errorf("TriviaRequest(%v, %v): did not return the correct number of records, got %d - expected: %d", tt.categoryVal, tt.limitVal, gotValsSize, TriviaMaxRecordCount)
-			}
-		}
-
-		// Category has a non-empty value while limit has a value greater than zero
-		if categoryValSize > 0 && isItemInCategoryList(tt.categoryVal) && tt.limitVal > 0 {
-			if gotError != nil {
-				t.Errorf("TriviaRequest(%v, %v): error not expected, got %v", tt.categoryVal, tt.limitVal, gotError)
+				t.Errorf("TriviaRequest(%v, %v): did not return the correct number of records, got %d - expected: %d", tt.categoryVal, limitVal, gotValsSize, TriviaMaxRecordCount)
 			}
 
-			if tt.limitVal <= APIMaxRecordCount && gotValsSize != tt.limitVal {
-				t.Errorf("TriviaRequest(%v, %v): did not return the correct number of records, got %d - expected: %d", tt.categoryVal, tt.limitVal, gotValsSize, tt.limitVal)
-			}
-
-			if tt.limitVal > APIMaxRecordCount && gotValsSize != APIMaxRecordCount {
-				t.Errorf("TriviaRequest(%v, %v): did not return the correct number of records, got %d - expected: %d", tt.categoryVal, tt.limitVal, gotValsSize, APIMaxRecordCount)
+			if len(gotTimestamp) == 0 {
+				t.Errorf("TriviaRequest(%v, %v): did not return a valid time stamp, got %s", tt.categoryVal, limitVal, gotTimestamp)
 			}
 		}
 
 		// Category has a non-empty value while and the category is not list in the category list
 		if categoryValSize > 0 && !isItemInCategoryList(tt.categoryVal) {
 			if gotError != nil {
-				t.Errorf("TriviaRequest(%v, %v): error not expected, got %v", tt.categoryVal, tt.limitVal, gotError)
+				t.Errorf("TriviaRequest(%v, %v): error not expected, got %v", tt.categoryVal, limitVal, gotError)
 			}
 
 			if gotValsSize != EmptyRecordCount {
-				t.Errorf("TriviaRequest(%v, %v): did not return the correct number of records, got %d - expected: %d", tt.categoryVal, tt.limitVal, gotValsSize, EmptyRecordCount)
+				t.Errorf("TriviaRequest(%v, %v): did not return the correct number of records, got %d - expected: %d", tt.categoryVal, limitVal, gotValsSize, EmptyRecordCount)
+			}
+
+			if len(gotTimestamp) == 0 {
+				t.Errorf("TriviaRequest(%v, %v): did not return a valid time stamp, got %s", tt.categoryVal, limitVal, gotTimestamp)
 			}
 		}
 	}
