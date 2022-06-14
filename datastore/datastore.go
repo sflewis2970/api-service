@@ -1,89 +1,135 @@
 package datastore
 
 import (
+	"bytes"
+	"encoding/json"
 	"log"
-	"strings"
+	"net/http"
 	"time"
-
-	"github.com/patrickmn/go-cache"
-	"github.com/sflewis2970/trivia-service/common"
 )
 
-const (
-	DEFAULT_EXPIRATION int = 1  // expirastion time in minutes
-	CLEANUP_INTERVAL   int = 10 // expirastion time in minutes
-)
+// AddQuestionAndAnswer sends a request to the DataStore server to add a question to the datastore
+func (qds *QuestionDS) AddQuestionAndAnswer(questionID string, dst DataStoreTable) error {
+	var aqRequest AddQuestionRequest
 
-type QuestionDS struct {
-	memCache *cache.Cache
-}
+	// Build add question request
+	aqRequest.QuestionID = questionID
+	aqRequest.Question = dst.Question
+	aqRequest.Category = dst.Category
+	aqRequest.Answer = dst.Answer
 
-type QuestionAndAnswer struct {
-	Question string
-	Category string
-	Response string
-	Answer   string
-	Correct  bool
-	Message  string
-}
-
-func (qds *QuestionDS) AddQuestionAndAnswer(questionID string, qa QuestionAndAnswer) {
-	log.Print("Adding question to map")
-	log.Print("Question ID: ", questionID)
-	log.Print("Question: ", qa.Question)
-	log.Print("Answer: ", qa.Answer)
-
-	qds.memCache.Set(questionID, qa, cache.DefaultExpiration)
-}
-
-func (qds *QuestionDS) CheckAnswer(questionID string, response string) (string, *QuestionAndAnswer) {
-	newQA := new(QuestionAndAnswer)
-	log.Printf("Looking up question ID: %v", questionID)
-	item, itemFound := qds.memCache.Get(questionID)
-	timestamp := ""
-
-	if itemFound {
-		qa, ok := item.(QuestionAndAnswer)
-		if !ok {
-			log.Print("Error converting interface object: ", item)
-		} else {
-			// Get timestamp right after checking to see if item is in map
-			timestamp = common.GetFormattedTime(time.Now(), "Mon Jan 2 15:04:05 2006")
-
-			log.Print("Found question in map: ", questionID)
-
-			// Update fields for new Question and Answer
-			newQA.Question = qa.Question
-			newQA.Category = qa.Category
-			newQA.Response = response
-			newQA.Answer = qa.Answer
-
-			// Delete the record from map
-			qds.memCache.Delete(questionID)
-			log.Print("record deleted!")
-
-			// Check to see the client has provided the correct answer
-			if strings.TrimSpace(qa.Answer) == strings.TrimSpace(response) {
-				newQA.Correct = true
-				newQA.Message = "Congrats! That is correct!"
-				return timestamp, newQA
-			} else {
-				newQA.Correct = false
-				newQA.Message = "Nice try! That is NOT correct"
-			}
-		}
-	} else {
-		newQA.Correct = false
-		newQA.Message = "Question not found"
+	// Convert struct to byte array
+	requestBody, marshalErr := json.Marshal(aqRequest)
+	if marshalErr != nil {
+		log.Print("marshaling error: ", marshalErr)
+		return marshalErr
 	}
 
-	return timestamp, newQA
+	// Create a http request
+	url := DS_HOST + DS_PORT + DS_ADD_QUESTION_PATH
+	response, postErr := http.Post(url, "application/json", bytes.NewBuffer(requestBody))
+	if postErr != nil {
+		return postErr
+	}
+	defer response.Body.Close()
+
+	// Handle add question response
+	var aqResponse AddQuestionResponse
+
+	// Read response stream into JSON
+	json.NewDecoder(response.Body).Decode(&aqResponse)
+
+	return nil
 }
 
-func InitializeDataStore() *QuestionDS {
+// CheckAnswer sends a request to the DataStore server to determine if the question was answered correctly
+func (qds *QuestionDS) CheckAnswer(questionID string, clientResponse string) (string, *QuestionAndAnswer, error) {
+	timestamp := ""
+	var caRequest CheckAnswerRequest
+
+	// Build add question request
+	caRequest.QuestionID = questionID
+	caRequest.Response = clientResponse
+
+	// Convert struct to byte array
+	requestBody, marshalErr := json.Marshal(caRequest)
+	if marshalErr != nil {
+		log.Print("marshaling error: ", marshalErr)
+		return "", nil, marshalErr
+	}
+
+	// Create a http request
+	url := DS_HOST + DS_PORT + DS_CHECK_ANSWER_PATH
+	response, postErr := http.Post(url, "application/json", bytes.NewBuffer(requestBody))
+	if postErr != nil {
+		return "", nil, postErr
+	}
+	defer response.Body.Close()
+
+	// Handle add question response
+	var caResponse CheckAnswerResponse
+
+	// Read response stream into JSON
+	json.NewDecoder(response.Body).Decode(&caResponse)
+
+	// Update QuestionAndAnswer struct
+	timestamp = caResponse.Timestamp
+
+	var newQA *QuestionAndAnswer
+	newQA = new(QuestionAndAnswer)
+	newQA.Question = caResponse.Question
+	newQA.Category = caResponse.Category
+	newQA.Answer = caResponse.Answer
+	newQA.Response = caResponse.Response
+	newQA.Correct = caResponse.Correct
+	newQA.Message = caResponse.Message
+
+	return timestamp, newQA, nil
+}
+
+// SendStatusRequest sends a request for the status of the datastore server
+func (qds *QuestionDS) sendStatusRequest() StatusCode {
+	serverName := "Datastore"
+	url := DS_HOST + DS_PORT + DS_STATUS_PATH + "?" + DS_SERVERNAME + serverName
+	log.Print("sending status request to ", url)
+
+	// http request
+	response, getErr := http.Get(url)
+	if getErr != nil {
+		log.Print("A response error has occurred...")
+		return StatusCode(DS_REQUEST_ERROR)
+	}
+	defer response.Body.Close()
+
+	// Status (Request) Response
+	var sResponse StatusResponse
+
+	// Read JSON from stream
+	json.NewDecoder(response.Body).Decode(&sResponse)
+
+	return sResponse.Status
+}
+
+// CreateDataStore prepares the datastore component waits for the datastore server before allowing messages to be sent
+func CreateDataStore() *QuestionDS {
 	ds := new(QuestionDS)
 
-	ds.memCache = cache.New(time.Duration(DEFAULT_EXPIRATION)*time.Minute, time.Duration(CLEANUP_INTERVAL)*time.Minute)
+	var serverStatus StatusCode
+	for serverStatus != StatusCode(DS_RUNNING) {
+		// Get datastore server status
+		serverStatus = ds.sendStatusRequest()
+		log.Print("datastore server status: ", serverStatus)
+
+		// Once the datastore is up and running get out!
+		if serverStatus == StatusCode(DS_RUNNING) {
+			break
+		} else {
+			log.Print("waiting for Datastore server...")
+		}
+
+		// Sleep for 3 seconds
+		time.Sleep(time.Second * 3)
+	}
 
 	return ds
 }

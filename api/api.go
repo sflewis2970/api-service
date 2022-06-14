@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"net/http"
+	"log"
 	"time"
 
 	"github.com/sflewis2970/trivia-service/common"
@@ -43,7 +43,7 @@ func isItemInCategoryList(item string) bool {
 	return false
 }
 
-func TriviaRequest(category string, limit int) (error, []TriviaResponse, string) {
+func TriviaRequest(category string, limit int) ([]TriviaResponse, string, error) {
 	// Build URL string
 	url := TriviaURL
 
@@ -54,31 +54,36 @@ func TriviaRequest(category string, limit int) (error, []TriviaResponse, string)
 		url = url + "?category=" + category
 	}
 
-	// Add limit string to the end of the url
+	// Set limit default value
 	if limit == 0 {
 		limit = TriviaMaxRecordCount
 	}
 
+	// Add limit string to the end of the url
 	if categoryLength > 0 {
 		url = url + "&limit=" + fmt.Sprint(limit)
 	} else {
 		url = url + "?limit=" + fmt.Sprint(limit)
 	}
 
-	// Create new http request
-	request, requestErr := http.NewRequest("GET", url, nil)
-	if requestErr != nil {
-		return requestErr, nil, ""
+	headers := []common.HTTPHeader{
+		{Key: RapidAPIHostKey, Value: TriviaAPIHostValue},
+		{Key: RapidAPIKey, Value: RapidAPIValue},
 	}
 
-	// Setup request headers
-	request.Header.Add(RapidAPIHostKey, TriviaAPIHostValue)
-	request.Header.Add(RapidAPIKey, RapidAPIValue)
+	// Create a http request
+	method := "GET"
+	request, requestErr := common.CreateRequest(method, url, headers, nil)
+	if requestErr != nil {
+		log.Print("Error creating request...")
+		return nil, "", requestErr
+	}
 
-	// Get response from http request
-	response, responseErr := http.DefaultClient.Do(request)
+	// Execute request
+	response, responseErr := common.ExecuteRequest(request)
 	if responseErr != nil {
-		return requestErr, nil, ""
+		log.Print("Error executing request...")
+		return nil, "", responseErr
 	}
 	defer response.Body.Close()
 
@@ -88,16 +93,18 @@ func TriviaRequest(category string, limit int) (error, []TriviaResponse, string)
 	// Parse request body
 	body, readErr := ioutil.ReadAll(response.Body)
 	if readErr != nil {
-		return readErr, nil, ""
+		log.Print("Error reading response...")
+		return nil, "", readErr
 	}
 
 	// Parse response into JSON format
 	responses := make([]TriviaResponse, 0)
 	unmarshalErr := json.Unmarshal(body, &responses)
 	if unmarshalErr != nil {
-		return unmarshalErr, nil, ""
+		log.Print("Error unmarshaling response...")
+		return nil, "", unmarshalErr
 	}
 
 	// Return a valid response (in JSON format) as well as a timestamp
-	return nil, responses, timestamp
+	return responses, timestamp, nil
 }
