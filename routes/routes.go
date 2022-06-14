@@ -12,21 +12,24 @@ type RoutingServer struct {
 }
 
 func (rs *RoutingServer) setupRoutes() {
-	// Display log message
-	log.Print("Setting up web service routes")
-
-	// Initialize Datastore before receiving any messages
-	controllers.InitializeController(rs.Router)
-
 	// Setup routes
 	rs.Router.HandleFunc("/", controllers.Home)
-	rs.Router.HandleFunc("/api/v1/question", controllers.GetQuestion)
-	rs.Router.HandleFunc("/api/v1/answer", controllers.AnswerQuestion)
+
+	// Display log message
+	log.Print("Setting up trivia service routes")
+
+	// Client-side routes
+	rs.Router.HandleFunc("/api/v1/trivia/question", controllers.GetQuestion)
+	rs.Router.HandleFunc("/api/v1/trivia/answer", controllers.AnswerQuestion)
 }
 
 func CreateRoutingServer() *RoutingServer {
 	rs := new(RoutingServer)
 
+	// Initialize controller
+	controllers.InitializeController()
+
+	// Create mux Router and setup routes
 	rs.Router = mux.NewRouter()
 	rs.setupRoutes()
 
