@@ -1,23 +1,17 @@
 package common
 
 import (
-	"bytes"
-	"encoding/json"
-	"io/ioutil"
+	"io"
 	"log"
 	"math/rand"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 )
 
-// Generate random float value
-func GenerateFloat64Vals(valRange float64, minVal float64) float64 {
-	newRand := rand.New(rand.NewSource(time.Now().UnixNano()))
-
-	// Return randomly generated float64
-	return (newRand.Float64() * valRange) + minVal
+type HTTPHeader struct {
+	Key   string
+	Value string
 }
 
 // Build formatted time string
@@ -39,19 +33,7 @@ func BuildUUID(uuid string, delimiter string, nbrOfGroups int) string {
 	return newUUID
 }
 
-// Utility to build a slice of strings
-func BuildStrSlice(orgStr string, delimiter string) []string {
-	newStrList := []string{}
-
-	strList := strings.Split(orgStr, delimiter)
-	for _, value := range strList {
-		newStrList = append(newStrList, value)
-	}
-
-	return newStrList
-}
-
-// Utility to build a slice of strings
+// Utility to build strings seperated by a delimiter
 func BuildDelimitedStr(strs []string, delimiter string) string {
 	newStr := ""
 
@@ -74,49 +56,28 @@ func ShuffleList(strList []string) []string {
 	return strList
 }
 
-func GetHTTPRequest(url string, payload interface{}) (*http.Response, error) {
-	response, getErr := http.Get(url)
-	if getErr != nil {
-		return nil, getErr
+func CreateRequest(method string, url string, headers []HTTPHeader, httpBody io.Reader) (*http.Request, error) {
+	// Create new http request
+	request, requestErr := http.NewRequest(method, url, httpBody)
+	if requestErr != nil {
+		log.Print("A request error has occurred...")
+		return nil, requestErr
 	}
 
-	return response, nil
+	// Setup request headers
+	for _, header := range headers {
+		request.Header.Add(header.Key, header.Value)
+	}
+
+	return request, nil
 }
 
-func ReadAllBody(response *http.Response) ([]byte, error) {
-	// Read the response body
-	body, readErr := ioutil.ReadAll(response.Body)
-	if readErr != nil {
-		return nil, readErr
-	}
-
-	return body, nil
-}
-
-func SendFormRequest(destination string, payload interface{}) (*http.Response, error) {
-	data := url.Values{
-		"name": {"John Doe"},
-		"city": {"San Diego"},
-	}
-
-	response, postErr := http.PostForm(destination, data)
-	if postErr != nil {
-		return nil, postErr
-	}
-
-	return response, nil
-}
-
-func SendJSONRequest(destination string, payload interface{}) (*http.Response, error) {
-	values := map[string]string{"name": "John Doe", "city": "san Diego"}
-	jsonData, marshalErr := json.Marshal(values)
-	if marshalErr != nil {
-		log.Print("Error marshaliung data" + marshalErr.Error())
-	}
-
-	response, postErr := http.Post(destination, "application/json", bytes.NewBuffer(jsonData))
-	if postErr != nil {
-		return nil, postErr
+func ExecuteRequest(request *http.Request) (*http.Response, error) {
+	// Get response from http request
+	response, responseErr := http.DefaultClient.Do(request)
+	if responseErr != nil {
+		log.Print("A response error has occurred...")
+		return nil, responseErr
 	}
 
 	return response, nil
