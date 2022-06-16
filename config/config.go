@@ -9,8 +9,10 @@ import (
 const CONFIG_FILE_NAME = "./config/config.json"
 
 type ConfigData struct {
-	HostName string `json:"hostname"`
-	Port     string `json:"port"`
+	HostName      string `json:"hostname"`
+	HostPort      string `json:"hostport"`
+	DataStoreName string `json:"dsname"`
+	DataStorePort string `json:"dsport"`
 }
 
 type config struct {

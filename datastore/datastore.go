@@ -6,10 +6,19 @@ import (
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/sflewis2970/trivia-service/config"
 )
 
+var qds *QuestionDataStore
+
+type QuestionDataStore struct {
+	cfgData      *config.ConfigData
+	serverStatus StatusCode
+}
+
 // AddQuestionAndAnswer sends a request to the DataStore server to add a question to the datastore
-func (qds *QuestionDS) AddQuestionAndAnswer(questionID string, dst DataStoreTable) error {
+func (q *QuestionDataStore) AddQuestionAndAnswer(questionID string, dst DataStoreTable) error {
 	var aqRequest AddQuestionRequest
 
 	// Build add question request
@@ -26,7 +35,7 @@ func (qds *QuestionDS) AddQuestionAndAnswer(questionID string, dst DataStoreTabl
 	}
 
 	// Create a http request
-	url := DS_HOST + DS_PORT + DS_ADD_QUESTION_PATH
+	url := q.cfgData.DataStoreName + q.cfgData.DataStorePort + DS_ADD_QUESTION_PATH
 	response, postErr := http.Post(url, "application/json", bytes.NewBuffer(requestBody))
 	if postErr != nil {
 		return postErr
@@ -43,7 +52,7 @@ func (qds *QuestionDS) AddQuestionAndAnswer(questionID string, dst DataStoreTabl
 }
 
 // CheckAnswer sends a request to the DataStore server to determine if the question was answered correctly
-func (qds *QuestionDS) CheckAnswer(questionID string, clientResponse string) (string, *QuestionAndAnswer, error) {
+func (q *QuestionDataStore) CheckAnswer(questionID string, clientResponse string) (string, *QuestionAndAnswer, error) {
 	timestamp := ""
 	var caRequest CheckAnswerRequest
 
@@ -59,7 +68,7 @@ func (qds *QuestionDS) CheckAnswer(questionID string, clientResponse string) (st
 	}
 
 	// Create a http request
-	url := DS_HOST + DS_PORT + DS_CHECK_ANSWER_PATH
+	url := q.cfgData.DataStoreName + q.cfgData.DataStorePort + DS_CHECK_ANSWER_PATH
 	response, postErr := http.Post(url, "application/json", bytes.NewBuffer(requestBody))
 	if postErr != nil {
 		return "", nil, postErr
@@ -83,14 +92,15 @@ func (qds *QuestionDS) CheckAnswer(questionID string, clientResponse string) (st
 	newQA.Response = caResponse.Response
 	newQA.Correct = caResponse.Correct
 	newQA.Message = caResponse.Message
+	newQA.Warning = caResponse.Warning
+	newQA.Error = caResponse.Error
 
 	return timestamp, newQA, nil
 }
 
 // SendStatusRequest sends a request for the status of the datastore server
-func (qds *QuestionDS) sendStatusRequest() StatusCode {
-	serverName := "Datastore"
-	url := DS_HOST + DS_PORT + DS_STATUS_PATH + "?" + DS_SERVERNAME + serverName
+func (q *QuestionDataStore) sendStatusRequest() StatusCode {
+	url := q.cfgData.DataStoreName + q.cfgData.DataStorePort + DS_STATUS_PATH
 	log.Print("sending status request to ", url)
 
 	// http request
@@ -111,25 +121,32 @@ func (qds *QuestionDS) sendStatusRequest() StatusCode {
 }
 
 // CreateDataStore prepares the datastore component waits for the datastore server before allowing messages to be sent
-func CreateDataStore() *QuestionDS {
-	ds := new(QuestionDS)
+func GetDataStore() *QuestionDataStore {
+	if qds == nil {
+		// Create QuestionDataStore object
+		log.Print("Creating QuestionDataStore object")
+		qds = new(QuestionDataStore)
 
-	var serverStatus StatusCode
-	for serverStatus != StatusCode(DS_RUNNING) {
-		// Get datastore server status
-		serverStatus = ds.sendStatusRequest()
-		log.Print("datastore server status: ", serverStatus)
+		// Update fields
+		qds.cfgData = config.GetConfig().GetConfigData()
+		qds.serverStatus = StatusCode(DS_NOT_STARTED)
 
-		// Once the datastore is up and running get out!
-		if serverStatus == StatusCode(DS_RUNNING) {
-			break
-		} else {
-			log.Print("waiting for Datastore server...")
+		// Wait for DataStore server to become available
+		for qds.serverStatus != StatusCode(DS_RUNNING) {
+			// Get datastore server status
+			qds.serverStatus = qds.sendStatusRequest()
+
+			// Once the datastore is up and running get out!
+			if qds.serverStatus == StatusCode(DS_RUNNING) {
+				break
+			} else {
+				log.Print("waiting for Datastore server...")
+			}
+
+			// Sleep for 3 seconds
+			time.Sleep(time.Second * 3)
 		}
-
-		// Sleep for 3 seconds
-		time.Sleep(time.Second * 3)
 	}
 
-	return ds
+	return qds
 }

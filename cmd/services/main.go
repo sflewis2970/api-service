@@ -22,6 +22,7 @@ func main() {
 	// Start Server
 	log.Print("Web service server is ready...")
 
-	addr := cfg.GetConfigData().HostName + cfg.GetConfigData().Port
+	addr := cfg.GetConfigData().HostName + cfg.GetConfigData().HostPort
+	log.Print("The address used by the service is: ", addr)
 	log.Fatal(http.ListenAndServe(addr, rs.Router))
 }
