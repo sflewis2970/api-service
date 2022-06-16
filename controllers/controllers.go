@@ -1,14 +1,9 @@
 package controllers
 
 import (
-	"log"
-
 	"github.com/sflewis2970/trivia-service/api"
 	"github.com/sflewis2970/trivia-service/datastore"
 )
-
-// Global controller component
-var ctrlComponent *controllerComponent
 
 const (
 	DASH             string = "-"
@@ -45,19 +40,21 @@ func containsDuplicates(items []api.TriviaResponse) bool {
 	return false
 }
 
+// Global controller component
+var cComponent *controllerComponent
+
 type controllerComponent struct {
-	ds *datastore.QuestionDS
+	ds *datastore.QuestionDataStore
 }
 
-func (c *controllerComponent) initializeDataStore() {
+func (c *controllerComponent) initializeDataStore() *datastore.QuestionDataStore {
 	// Create datastore component
-	log.Print("initializing questions data store...")
-	c.ds = datastore.CreateDataStore()
+	return datastore.GetDataStore()
 }
 
 // Export functions
 func InitializeController() {
 	// Create controller component
-	ctrlComponent = new(controllerComponent)
-	ctrlComponent.initializeDataStore()
+	cComponent = new(controllerComponent)
+	cComponent.ds = cComponent.initializeDataStore()
 }
