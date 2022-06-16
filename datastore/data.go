@@ -2,8 +2,6 @@ package datastore
 
 import (
 	"math"
-
-	"github.com/patrickmn/go-cache"
 )
 
 // Datastore component contants
@@ -31,8 +29,6 @@ const (
 	// DS_MAX_STATUS_ATTEMPTS -- This is no longer be used be for now we keep the setting in case
 	//                           we go back to
 	DS_MAX_STATUS_ATTEMPTS int    = 3
-	DS_HOST                string = "http://127.0.0.1"
-	DS_PORT                string = ":9090"
 	DS_STATUS_PATH         string = "/api/v1/ds/status"
 	DS_ADD_QUESTION_PATH   string = "/api/v1/ds/addquestion"
 	DS_CHECK_ANSWER_PATH   string = "/api/v1/ds/checkanswer"
@@ -42,12 +38,11 @@ const (
 // Status Response receives a response from a server in the network with the server status information
 type StatusCode int
 type StatusResponse struct {
-	ServerName string     `json:"servername"`
-	Timestamp  string     `json:"timestamp"`
-	Status     StatusCode `json:"status"`
-	Message    string     `json:"message,omitempty"`
-	Warning    string     `json:"warning,omitempty"`
-	Error      string     `json:"error,omitempty"`
+	Timestamp string     `json:"timestamp"`
+	Status    StatusCode `json:"status"`
+	Message   string     `json:"message,omitempty"`
+	Warning   string     `json:"warning,omitempty"`
+	Error     string     `json:"error,omitempty"`
 }
 
 // Add Question Request sends a request to the datastore server to add a question to the datastore
@@ -73,7 +68,6 @@ type AddQuestionResponse struct {
 }
 
 type CheckAnswerRequest struct {
-	ServerName string `json:"servername"`
 	QuestionID string `json:"questionid"`
 	Response   string `json:"response"`
 }
@@ -104,10 +98,6 @@ type QuestionAndAnswer struct {
 	Answer   string
 	Correct  bool
 	Message  string
-}
-
-type QuestionDS struct {
-	useLocalDB bool
-	dsStatus   StatusCode
-	memCache   *cache.Cache
+	Warning  string
+	Error    string
 }
