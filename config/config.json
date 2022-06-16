@@ -1,4 +1,6 @@
 {
     "hostname" : "",
-    "port" : ":8080"
+    "hostport" : ":8080",
+    "dsname" : "http://127.0.0.1",
+    "dsport" : ":9090"
 }
