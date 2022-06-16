@@ -108,19 +108,13 @@ func GetQuestion(rw http.ResponseWriter, r *http.Request) {
 		qResponse.Choices = common.BuildDelimitedStr(choiceList, ",")
 
 		// Create data store table struct
-		dsTable := datastore.DataStoreTable{}
+		var dsTable datastore.DataStoreTable
 		dsTable.Question = qResponse.Question
 		dsTable.Category = qResponse.Category
 		dsTable.Answer = apiResponses[0].Answer
 
 		// Add question to data store
-		if ctrlComponent == nil {
-			log.Print("ctrlComponent object nil...")
-		} else if ctrlComponent == nil {
-			log.Print("ctrlComponent datastore object nil...")
-		} else {
-			ctrlComponent.ds.AddQuestionAndAnswer(qResponse.QuestionID, dsTable)
-		}
+		cComponent.ds.AddQuestionAndAnswer(qResponse.QuestionID, dsTable)
 	}
 
 	// Write JSON to stream
@@ -153,10 +147,10 @@ func AnswerQuestion(rw http.ResponseWriter, r *http.Request) {
 
 	// Initialize data store when needed
 	var aResponse AnswerResponse
-	timestamp, newQA, caErr := ctrlComponent.ds.CheckAnswer(aRequest.QuestionID, aRequest.Response)
+	timestamp, newQA, caErr := cComponent.ds.CheckAnswer(aRequest.QuestionID, aRequest.Response)
 	if caErr != nil {
-		log.Print("Check Answer error: ", caErr)
-		aResponse.Message = caErr.Error()
+		log.Print("Error return from CheckAnswer call: ", caErr)
+		aResponse.Error = caErr.Error()
 	} else {
 		// Build Response mesasge
 		aResponse.Question = newQA.Question
@@ -165,6 +159,8 @@ func AnswerQuestion(rw http.ResponseWriter, r *http.Request) {
 		aResponse.Answer = newQA.Answer
 		aResponse.Timestamp = timestamp
 		aResponse.Message = newQA.Message
+		aResponse.Warning = newQA.Warning
+		aResponse.Error = newQA.Error
 		aResponse.Correct = newQA.Correct
 	}
 
