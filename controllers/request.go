@@ -91,7 +91,7 @@ func GetQuestion(rw http.ResponseWriter, r *http.Request) {
 		// there should be five items returned from the API
 		// After getting a valid response from the API, generate a question ID
 		qResponse.QuestionID = uuid.New().String()
-		qResponse.QuestionID = common.BuildUUID(qResponse.QuestionID, DASH, NBR_OF_GROUPS)
+		qResponse.QuestionID = common.BuildUUID(qResponse.QuestionID, DASH, ONE_SET)
 		qResponse.Category = apiResponses[0].Category
 		qResponse.Question = apiResponses[0].Question
 

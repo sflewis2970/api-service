@@ -19,22 +19,23 @@ type QuestionDataStore struct {
 
 // AddQuestionAndAnswer sends a request to the DataStore server to add a question to the datastore
 func (q *QuestionDataStore) AddQuestionAndAnswer(questionID string, dst DataStoreTable) error {
+	// Create AddQuestionRequest message
 	var aqRequest AddQuestionRequest
 
-	// Build add question request
+	// Build AddQuestionRequest
 	aqRequest.QuestionID = questionID
 	aqRequest.Question = dst.Question
 	aqRequest.Category = dst.Category
 	aqRequest.Answer = dst.Answer
 
-	// Convert struct to byte array
+	// Build request body from AddQuestionRequest
 	requestBody, marshalErr := json.Marshal(aqRequest)
 	if marshalErr != nil {
 		log.Print("marshaling error: ", marshalErr)
 		return marshalErr
 	}
 
-	// Create a http request
+	// Post request
 	url := q.cfgData.DataStoreName + q.cfgData.DataStorePort + DS_ADD_QUESTION_PATH
 	response, postErr := http.Post(url, "application/json", bytes.NewBuffer(requestBody))
 	if postErr != nil {

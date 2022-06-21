@@ -9,7 +9,7 @@ const (
 	DASH             string = "-"
 	COMMA            string = ","
 	SPACE            string = " "
-	NBR_OF_GROUPS    int    = 1
+	ONE_SET          int    = 1
 	FIND_ERROR       int    = -1
 	EMPTY_QUESTIONID int    = 0
 	EMPTY_QUESTION   int    = 0
