@@ -1,7 +1,10 @@
 package controllers
 
 import (
+	"log"
+
 	"github.com/sflewis2970/trivia-service/api"
+	"github.com/sflewis2970/trivia-service/config"
 	"github.com/sflewis2970/trivia-service/datastore"
 )
 
@@ -41,20 +44,33 @@ func containsDuplicates(items []api.TriviaResponse) bool {
 }
 
 // Global controller component
-var cComponent *controllerComponent
+var ctrlr *controllerComponent
 
 type controllerComponent struct {
-	ds *datastore.QuestionDataStore
+	cfgData *config.ConfigData
+	ds      *datastore.QuestionDataStore
 }
 
-func (c *controllerComponent) initializeDataStore() *datastore.QuestionDataStore {
+func (c *controllerComponent) initializeDS() *datastore.QuestionDataStore {
 	// Create datastore component
-	return datastore.GetDataStore()
+	return datastore.Initialize()
 }
 
 // Export functions
-func InitializeController() {
-	// Create controller component
-	cComponent = new(controllerComponent)
-	cComponent.ds = cComponent.initializeDataStore()
+func Initialize() {
+	if ctrlr == nil {
+		// Create controller component
+		ctrlr = new(controllerComponent)
+
+		// Load config data
+		var getCfgDataErr error
+		ctrlr.cfgData, getCfgDataErr = config.Get().GetData()
+		if getCfgDataErr != nil {
+			log.Print("Error getting config data: ", getCfgDataErr)
+			return
+		}
+
+		// Initialize Datastore
+		ctrlr.ds = ctrlr.initializeDS()
+	}
 }

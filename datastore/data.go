@@ -30,9 +30,8 @@ const (
 	//                           we go back to
 	DS_MAX_STATUS_ATTEMPTS int    = 3
 	DS_STATUS_PATH         string = "/api/v1/ds/status"
-	DS_ADD_QUESTION_PATH   string = "/api/v1/ds/addquestion"
-	DS_CHECK_ANSWER_PATH   string = "/api/v1/ds/checkanswer"
-	DS_SERVERNAME          string = "servername="
+	DS_INSERT_PATH         string = "/api/v1/ds/insert"
+	DS_GET_PATH            string = "/api/v1/ds/get"
 )
 
 // Status Response receives a response from a server in the network with the server status information
@@ -69,20 +68,16 @@ type AddQuestionResponse struct {
 
 type CheckAnswerRequest struct {
 	QuestionID string `json:"questionid"`
-	Response   string `json:"response"`
 }
 
 type CheckAnswerResponse struct {
-	QuestionID string `json:"questionid"`
-	Question   string `json:"question"`
-	Category   string `json:"category"`
-	Answer     string `json:"answer"`
-	Response   string `json:"response"`
-	Timestamp  string `json:"timestamp"`
-	Correct    bool   `json:"correct"`
-	Message    string `json:"message,omitempty"`
-	Warning    string `json:"warning,omitempty"`
-	Error      string `json:"error,omitempty"`
+	Question  string `json:"question"`
+	Category  string `json:"category"`
+	Answer    string `json:"answer"`
+	Timestamp string `json:"timestamp"`
+	Message   string `json:"message,omitempty"`
+	Warning   string `json:"warning,omitempty"`
+	Error     string `json:"error,omitempty"`
 }
 
 type DataStoreTable struct {
@@ -94,9 +89,7 @@ type DataStoreTable struct {
 type QuestionAndAnswer struct {
 	Question string
 	Category string
-	Response string
 	Answer   string
-	Correct  bool
 	Message  string
 	Warning  string
 	Error    string
