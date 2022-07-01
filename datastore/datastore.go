@@ -18,7 +18,7 @@ type QuestionDataStore struct {
 }
 
 // AddQuestionAndAnswer sends a request to the DataStore server to add a question to the datastore
-func (q *QuestionDataStore) AddQuestionAndAnswer(questionID string, dst DataStoreTable) error {
+func (q *QuestionDataStore) Insert(questionID string, dst DataStoreTable) error {
 	// Create AddQuestionRequest message
 	var aqRequest AddQuestionRequest
 
@@ -36,7 +36,7 @@ func (q *QuestionDataStore) AddQuestionAndAnswer(questionID string, dst DataStor
 	}
 
 	// Post request
-	url := q.cfgData.DataStoreName + q.cfgData.DataStorePort + DS_ADD_QUESTION_PATH
+	url := q.cfgData.DataStoreName + q.cfgData.DataStorePort + DS_INSERT_PATH
 	response, postErr := http.Post(url, "application/json", bytes.NewBuffer(requestBody))
 	if postErr != nil {
 		return postErr
@@ -53,13 +53,12 @@ func (q *QuestionDataStore) AddQuestionAndAnswer(questionID string, dst DataStor
 }
 
 // CheckAnswer sends a request to the DataStore server to determine if the question was answered correctly
-func (q *QuestionDataStore) CheckAnswer(questionID string, clientResponse string) (string, *QuestionAndAnswer, error) {
+func (q *QuestionDataStore) Get(questionID string) (string, *QuestionAndAnswer, error) {
 	timestamp := ""
 	var caRequest CheckAnswerRequest
 
 	// Build add question request
 	caRequest.QuestionID = questionID
-	caRequest.Response = clientResponse
 
 	// Convert struct to byte array
 	requestBody, marshalErr := json.Marshal(caRequest)
@@ -69,7 +68,7 @@ func (q *QuestionDataStore) CheckAnswer(questionID string, clientResponse string
 	}
 
 	// Create a http request
-	url := q.cfgData.DataStoreName + q.cfgData.DataStorePort + DS_CHECK_ANSWER_PATH
+	url := q.cfgData.DataStoreName + q.cfgData.DataStorePort + DS_GET_PATH
 	response, postErr := http.Post(url, "application/json", bytes.NewBuffer(requestBody))
 	if postErr != nil {
 		return "", nil, postErr
@@ -90,8 +89,6 @@ func (q *QuestionDataStore) CheckAnswer(questionID string, clientResponse string
 	newQA.Question = caResponse.Question
 	newQA.Category = caResponse.Category
 	newQA.Answer = caResponse.Answer
-	newQA.Response = caResponse.Response
-	newQA.Correct = caResponse.Correct
 	newQA.Message = caResponse.Message
 	newQA.Warning = caResponse.Warning
 	newQA.Error = caResponse.Error
@@ -122,14 +119,20 @@ func (q *QuestionDataStore) sendStatusRequest() StatusCode {
 }
 
 // CreateDataStore prepares the datastore component waits for the datastore server before allowing messages to be sent
-func GetDataStore() *QuestionDataStore {
+func Initialize() *QuestionDataStore {
 	if qds == nil {
 		// Create QuestionDataStore object
 		log.Print("Creating QuestionDataStore object")
 		qds = new(QuestionDataStore)
 
-		// Update fields
-		qds.cfgData = config.GetConfig().GetConfigData()
+		// Update QuestionDataStore fields
+		var getCfgDataErr error
+		qds.cfgData, getCfgDataErr = config.Get().GetData()
+		if getCfgDataErr != nil {
+			log.Print("error getting config data...")
+			return nil
+		}
+
 		qds.serverStatus = StatusCode(DS_NOT_STARTED)
 
 		// Wait for DataStore server to become available
