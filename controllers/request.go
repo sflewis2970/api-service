@@ -42,9 +42,6 @@ func GetQuestion(rw http.ResponseWriter, r *http.Request) {
 	// Display a log message
 	log.Print("data received from client...")
 
-	// Question (Request) Response message
-	var qResponse QuestionResponse
-
 	// Initialize data store when needed
 	requestComplete := false
 	var apiResponseErr error
@@ -74,18 +71,20 @@ func GetQuestion(rw http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Question (Request) Response message
+	var qResponse QuestionResponse
+
 	// Build API Response
 	qResponse.Timestamp = timestamp
 
 	if apiResponseErr != nil {
 		// If an error occurs let the client know
-		qResponse.Category = categoryStr
 		qResponse.Error = apiResponseErr.Error()
 	} else if apiResponsesSize == 0 {
 		// If no error occurs but no response is returned
 		// let the client know, the most likely case where this happens
 		// is when the client supplies a category that does not exist
-		qResponse.Warning = "No question was returned, select another category"
+		qResponse.Warning = "No question was returned, invalid category selected"
 	} else {
 		// Since the client is no longer allowed to supply a limit
 		// there should be five items returned from the API
@@ -114,7 +113,16 @@ func GetQuestion(rw http.ResponseWriter, r *http.Request) {
 		dsTable.Answer = apiResponses[0].Answer
 
 		// Add question to data store
-		cComponent.ds.AddQuestionAndAnswer(qResponse.QuestionID, dsTable)
+		insertErr := ctrlr.ds.Insert(qResponse.QuestionID, dsTable)
+		if insertErr != nil {
+			errMsg := "Datastore: Insert error..."
+			log.Print(errMsg, ": ", insertErr)
+			qResponse.QuestionID = ""
+			qResponse.Category = ""
+			qResponse.Question = ""
+			qResponse.Choices = ""
+			qResponse.Error = errMsg
+		}
 	}
 
 	// Write JSON to stream
@@ -147,21 +155,32 @@ func AnswerQuestion(rw http.ResponseWriter, r *http.Request) {
 
 	// Initialize data store when needed
 	var aResponse AnswerResponse
-	timestamp, newQA, caErr := cComponent.ds.CheckAnswer(aRequest.QuestionID, aRequest.Response)
-	if caErr != nil {
-		log.Print("Error return from CheckAnswer call: ", caErr)
-		aResponse.Error = caErr.Error()
+	timestamp, newQA, getErr := ctrlr.ds.Get(aRequest.QuestionID)
+	if getErr != nil {
+		errMsg := "Datastore: Get error..."
+		log.Print(errMsg, ": ", getErr)
+		aResponse.Error = errMsg
 	} else {
 		// Build Response mesasge
-		aResponse.Question = newQA.Question
-		aResponse.Category = newQA.Category
-		aResponse.Response = newQA.Response
-		aResponse.Answer = newQA.Answer
-		aResponse.Timestamp = timestamp
-		aResponse.Message = newQA.Message
-		aResponse.Warning = newQA.Warning
-		aResponse.Error = newQA.Error
-		aResponse.Correct = newQA.Correct
+		if len(newQA.Question) > 0 {
+			aResponse.Question = newQA.Question
+			aResponse.Category = newQA.Category
+			aResponse.Answer = newQA.Answer
+			aResponse.Response = aRequest.Response
+			aResponse.Timestamp = timestamp
+
+			if newQA.Answer == aRequest.Response {
+				aResponse.Correct = true
+				aResponse.Message = ctrlr.cfgData.Messages.CongratsMsg
+			} else {
+				aResponse.Correct = false
+				aResponse.Message = ctrlr.cfgData.Messages.TryAgainMsg
+			}
+		} else {
+			aResponse.Message = newQA.Message
+			aResponse.Warning = newQA.Warning
+			aResponse.Error = newQA.Error
+		}
 	}
 
 	// Write JSON to stream
