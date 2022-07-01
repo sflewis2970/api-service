@@ -5,6 +5,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 )
@@ -17,6 +18,17 @@ type HTTPHeader struct {
 // Build formatted time string
 func GetFormattedTime(timeNow time.Time, timeFormat string) string {
 	return timeNow.Format(timeFormat)
+}
+
+// Get working directory
+func GetWorkingDir() (string, error) {
+	workingDir, getErr := os.Getwd()
+	if getErr != nil {
+		log.Print("Error getting working directory...")
+		return "", getErr
+	}
+
+	return workingDir, nil
 }
 
 // Build UUID string
