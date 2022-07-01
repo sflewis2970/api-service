@@ -27,7 +27,7 @@ func CreateRoutingServer() *RoutingServer {
 	rs := new(RoutingServer)
 
 	// Initialize controller
-	controllers.InitializeController()
+	controllers.Initialize()
 
 	// Create mux Router and setup routes
 	rs.Router = mux.NewRouter()
