@@ -2,5 +2,7 @@
     "hostname" : "",
     "hostport" : ":8080",
     "dsname" : "http://127.0.0.1",
-    "dsport" : ":9090"
+    "dsport" : ":9090",
+    "congrats" : "",
+    "tryagain" : ""
 }

@@ -169,7 +169,7 @@ func AnswerQuestion(rw http.ResponseWriter, r *http.Request) {
 			aResponse.Response = aRequest.Response
 			aResponse.Timestamp = timestamp
 
-			if newQA.Answer == aRequest.Response {
+			if aRequest.Response == newQA.Answer {
 				aResponse.Correct = true
 				aResponse.Message = ctrlr.cfgData.Messages.CongratsMsg
 			} else {

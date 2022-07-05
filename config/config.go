@@ -17,16 +17,16 @@ const UPDATE_CONFIG_DATA string = "update"
 // Config variable keys
 const (
 	// Host system info
-	HOSTNAME string = "hostname"
-	HOSTPORT string = "hostport"
+	HOSTNAME string = "HOSTNAME"
+	HOSTPORT string = "HOSTPORT"
 
 	// Datastore Server info
-	DSNAME string = "dsname"
-	DSPORT string = "dsport"
+	DSNAME string = "DS_NAME"
+	DSPORT string = "DS_PORT"
 
 	// Response Messages
-	CONGRATS string = "congrats"
-	TRYAGAIN string = "tryagain"
+	CONGRATS string = "CONGRATS"
+	TRYAGAIN string = "TRYAGAIN"
 )
 
 type Message struct {
@@ -110,8 +110,8 @@ func (c *config) getConfigEnv() error {
 	c.cfgData.DataStorePort = os.Getenv(DSPORT)
 
 	// Get response messages
-	c.cfgData.Messages.CongratsMsg = os.Getenv(CONGRATS)
-	c.cfgData.Messages.TryAgainMsg = os.Getenv(TRYAGAIN)
+	c.cfgData.Messages.CongratsMsg = "Congratulations! That is correct"
+	c.cfgData.Messages.TryAgainMsg = "Nice Try! Better luck on the next answer"
 
 	return nil
 }
