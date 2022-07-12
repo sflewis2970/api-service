@@ -1,4 +1,4 @@
-package datastore
+package datastores
 
 import (
 	"bytes"
@@ -10,15 +10,14 @@ import (
 	"github.com/sflewis2970/trivia-service/config"
 )
 
-var qds *QuestionDataStore
-
-type QuestionDataStore struct {
+// Datastore struct
+type DataStore struct {
 	cfgData      *config.ConfigData
 	serverStatus StatusCode
 }
 
 // AddQuestionAndAnswer sends a request to the DataStore server to add a question to the datastore
-func (q *QuestionDataStore) Insert(questionID string, dst DataStoreTable) error {
+func (ds *DataStore) Insert(questionID string, dst DataStoreTable) error {
 	// Create AddQuestionRequest message
 	var aqRequest AddQuestionRequest
 
@@ -36,7 +35,7 @@ func (q *QuestionDataStore) Insert(questionID string, dst DataStoreTable) error 
 	}
 
 	// Post request
-	url := "http://" + q.cfgData.DataStoreName + q.cfgData.DataStorePort + DS_INSERT_PATH
+	url := "http://" + ds.cfgData.DataStoreName + ds.cfgData.DataStorePort + DS_INSERT_PATH
 	response, postErr := http.Post(url, "application/json", bytes.NewBuffer(requestBody))
 	if postErr != nil {
 		return postErr
@@ -53,7 +52,7 @@ func (q *QuestionDataStore) Insert(questionID string, dst DataStoreTable) error 
 }
 
 // CheckAnswer sends a request to the DataStore server to determine if the question was answered correctly
-func (q *QuestionDataStore) Get(questionID string) (string, *QuestionAndAnswer, error) {
+func (ds *DataStore) Get(questionID string) (string, *QuestionAndAnswer, error) {
 	timestamp := ""
 	var caRequest CheckAnswerRequest
 
@@ -68,7 +67,7 @@ func (q *QuestionDataStore) Get(questionID string) (string, *QuestionAndAnswer, 
 	}
 
 	// Create a http request
-	url := "http://" + q.cfgData.DataStoreName + q.cfgData.DataStorePort + DS_GET_PATH
+	url := "http://" + ds.cfgData.DataStoreName + ds.cfgData.DataStorePort + DS_GET_PATH
 	response, postErr := http.Post(url, "application/json", bytes.NewBuffer(requestBody))
 	if postErr != nil {
 		return "", nil, postErr
@@ -97,8 +96,8 @@ func (q *QuestionDataStore) Get(questionID string) (string, *QuestionAndAnswer, 
 }
 
 // SendStatusRequest sends a request for the status of the datastore server
-func (q *QuestionDataStore) sendStatusRequest() StatusCode {
-	url := "http://" + q.cfgData.DataStoreName + q.cfgData.DataStorePort + DS_STATUS_PATH
+func (ds *DataStore) sendStatusRequest() StatusCode {
+	url := "http://" + ds.cfgData.DataStoreName + ds.cfgData.DataStorePort + DS_STATUS_PATH
 	log.Print("sending status request to ", url)
 
 	// http request
@@ -119,38 +118,36 @@ func (q *QuestionDataStore) sendStatusRequest() StatusCode {
 }
 
 // CreateDataStore prepares the datastore component waits for the datastore server before allowing messages to be sent
-func Initialize() *QuestionDataStore {
-	if qds == nil {
-		// Create QuestionDataStore object
-		log.Print("Creating QuestionDataStore object")
-		qds = new(QuestionDataStore)
+func New() *DataStore {
+	// Create QuestionDataStore object
+	log.Print("Creating DataStore object")
+	ds := new(DataStore)
 
-		// Update QuestionDataStore fields
-		var getCfgDataErr error
-		qds.cfgData, getCfgDataErr = config.Get().GetData()
-		if getCfgDataErr != nil {
-			log.Print("error getting config data...")
-			return nil
-		}
-
-		qds.serverStatus = StatusCode(DS_NOT_STARTED)
-
-		// Wait for DataStore server to become available
-		for qds.serverStatus != StatusCode(DS_RUNNING) {
-			// Get datastore server status
-			qds.serverStatus = qds.sendStatusRequest()
-
-			// Once the datastore is up and running get out!
-			if qds.serverStatus == StatusCode(DS_RUNNING) {
-				break
-			} else {
-				log.Print("waiting for Datastore server...")
-			}
-
-			// Sleep for 3 seconds
-			time.Sleep(time.Second * 3)
-		}
+	// Update QuestionDataStore fields
+	var cfgDataErr error
+	ds.cfgData, cfgDataErr = config.Get().GetData()
+	if cfgDataErr != nil {
+		log.Print("error getting config data...")
+		return nil
 	}
 
-	return qds
+	ds.serverStatus = StatusCode(DS_NOT_STARTED)
+
+	// Wait for DataStore server to become available
+	for ds.serverStatus != StatusCode(DS_RUNNING) {
+		// Get datastore server status
+		ds.serverStatus = ds.sendStatusRequest()
+
+		// Once the datastore is up and running get out!
+		if ds.serverStatus == StatusCode(DS_RUNNING) {
+			break
+		} else {
+			log.Print("waiting for Datastore server...")
+		}
+
+		// Sleep for 3 seconds
+		time.Sleep(time.Second * 3)
+	}
+
+	return ds
 }
