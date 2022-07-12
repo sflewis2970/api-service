@@ -1,7 +1,7 @@
 services:
   cache:
     image: redis:7.0
-    container_name: CNT-RedisCache
+    container_name: CNT-Cache
     restart: always
     ports:
       - 6379:6379

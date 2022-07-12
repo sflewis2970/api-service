@@ -6,15 +6,12 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/google/uuid"
-	"github.com/sflewis2970/trivia-service/api"
-	"github.com/sflewis2970/trivia-service/common"
-	"github.com/sflewis2970/trivia-service/datastore"
+	"github.com/sflewis2970/trivia-service/messages"
 )
 
 // Home is a http handler that receives messages from a client
-func Home(rw http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(rw, "Welcome to the trivia service app\n")
+func Home(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprint(w, "Welcome to the trivia service app\n")
 }
 
 // GetQuestion is a http handler that receives a client request.
@@ -32,101 +29,33 @@ func Home(rw http.ResponseWriter, r *http.Request) {
 //        "timestamp": "<formatted string of when the API returned the question>",
 //        "warning": "<optional warning message>",
 //        "error": "<optional error message>"}
-func GetQuestion(rw http.ResponseWriter, r *http.Request) {
-	// Get category from query parameter
-	categoryStr := r.URL.Query().Get("category")
-
-	// For now limit is NOT changeable
-	limit := 0
-
+func GetQuestion(w http.ResponseWriter, r *http.Request) {
 	// Display a log message
 	log.Print("data received from client...")
 
-	// Initialize data store when needed
-	requestComplete := false
-	var apiResponseErr error
-	var apiResponses []api.TriviaResponse
-	apiResponsesSize := 0
-	timestamp := ""
+	// Get category from query parameter
+	// For now this is not used but may be used at a later date
+	r.URL.Query().Get("category")
 
-	// Check for duplicates for marking the request as complete
-	for !requestComplete {
-		// Send request to API
-		apiResponses, timestamp, apiResponseErr = api.TriviaRequest(categoryStr, limit)
+	// Process API Get Request
+	qResponse, dsTable := controller.publicAPI.GetQuestion()
 
-		// Get API Response size
-		apiResponsesSize = len(apiResponses)
+	// Insert question into datastore
+	insertErr := controller.triviaModel.InsertQuestion(qResponse.QuestionID, dsTable)
 
-		if apiResponsesSize > 0 {
-			// When results are returned, make sure there are no duplicate answers
-			if !containsDuplicates(apiResponses) {
-				log.Print("No duplicates found...")
-				requestComplete = true
-			} else {
-				log.Print("Found duplicates...")
-			}
-		} else {
-			// An error occurred or no results found
-			requestComplete = true
-		}
-	}
-
-	// Question (Request) Response message
-	var qResponse QuestionResponse
-
-	// Build API Response
-	qResponse.Timestamp = timestamp
-
-	if apiResponseErr != nil {
-		// If an error occurs let the client know
-		qResponse.Error = apiResponseErr.Error()
-	} else if apiResponsesSize == 0 {
-		// If no error occurs but no response is returned
-		// let the client know, the most likely case where this happens
-		// is when the client supplies a category that does not exist
-		qResponse.Warning = "No question was returned, invalid category selected"
-	} else {
-		// Since the client is no longer allowed to supply a limit
-		// there should be five items returned from the API
-		// After getting a valid response from the API, generate a question ID
-		qResponse.QuestionID = uuid.New().String()
-		qResponse.QuestionID = common.BuildUUID(qResponse.QuestionID, DASH, ONE_SET)
-		qResponse.Category = apiResponses[0].Category
-		qResponse.Question = apiResponses[0].Question
-
-		// Build choices string
-		choiceList := []string{}
-		for idx := 0; idx < apiResponsesSize; idx++ {
-			choiceList = append(choiceList, apiResponses[idx].Answer)
-		}
-
-		// Shuttle list
-		choiceList = common.ShuffleList(choiceList)
-
-		// After the list has been shuffled build the string
-		qResponse.Choices = common.BuildDelimitedStr(choiceList, ",")
-
-		// Create data store table struct
-		var dsTable datastore.DataStoreTable
-		dsTable.Question = qResponse.Question
-		dsTable.Category = qResponse.Category
-		dsTable.Answer = apiResponses[0].Answer
-
-		// Add question to data store
-		insertErr := ctrlr.ds.Insert(qResponse.QuestionID, dsTable)
-		if insertErr != nil {
-			errMsg := "Datastore: Insert error..."
-			log.Print(errMsg, ": ", insertErr)
-			qResponse.QuestionID = ""
-			qResponse.Category = ""
-			qResponse.Question = ""
-			qResponse.Choices = ""
-			qResponse.Error = errMsg
-		}
+	// Add question to data store
+	if insertErr != nil {
+		errMsg := "Datastore: Insert error..."
+		log.Print(errMsg, ": ", insertErr)
+		qResponse.QuestionID = ""
+		qResponse.Category = ""
+		qResponse.Question = ""
+		qResponse.Choices = []string{}
+		qResponse.Error = errMsg
 	}
 
 	// Write JSON to stream
-	json.NewEncoder(rw).Encode(qResponse)
+	json.NewEncoder(w).Encode(qResponse)
 
 	// Display a log message
 	log.Print("data sent back to client...")
@@ -147,44 +76,17 @@ func GetQuestion(rw http.ResponseWriter, r *http.Request) {
 //        "message": "<message to client whether or not question was answered correctly>",
 //        "warning": "<optional warning message>",
 //        "error": "<optional error message>"}
-func AnswerQuestion(rw http.ResponseWriter, r *http.Request) {
-	var aRequest AnswerRequest
+func AnswerQuestion(w http.ResponseWriter, r *http.Request) {
+	var aRequest messages.AnswerRequest
 
 	// Read JSON from stream
 	json.NewDecoder(r.Body).Decode(&aRequest)
 
-	// Initialize data store when needed
-	var aResponse AnswerResponse
-	timestamp, newQA, getErr := ctrlr.ds.Get(aRequest.QuestionID)
-	if getErr != nil {
-		errMsg := "Datastore: Get error..."
-		log.Print(errMsg, ": ", getErr)
-		aResponse.Error = errMsg
-	} else {
-		// Build Response mesasge
-		if len(newQA.Question) > 0 {
-			aResponse.Question = newQA.Question
-			aResponse.Category = newQA.Category
-			aResponse.Answer = newQA.Answer
-			aResponse.Response = aRequest.Response
-			aResponse.Timestamp = timestamp
-
-			if aRequest.Response == newQA.Answer {
-				aResponse.Correct = true
-				aResponse.Message = ctrlr.cfgData.Messages.CongratsMsg
-			} else {
-				aResponse.Correct = false
-				aResponse.Message = ctrlr.cfgData.Messages.TryAgainMsg
-			}
-		} else {
-			aResponse.Message = newQA.Message
-			aResponse.Warning = newQA.Warning
-			aResponse.Error = newQA.Error
-		}
-	}
+	// Check the model for the answer
+	aResponse := controller.triviaModel.AnswerQuestion(aRequest)
 
 	// Write JSON to stream
-	json.NewEncoder(rw).Encode(aResponse)
+	json.NewEncoder(w).Encode(aResponse)
 
 	// Display a log message
 	log.Print("data sent back to client...")
