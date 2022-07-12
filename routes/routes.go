@@ -23,11 +23,11 @@ func (rs *RoutingServer) setupRoutes() {
 	rs.Router.HandleFunc("/api/v1/trivia/answer", controllers.AnswerQuestion)
 }
 
-func CreateRoutingServer() *RoutingServer {
+func New() *RoutingServer {
 	rs := new(RoutingServer)
 
 	// Initialize controller
-	controllers.Initialize()
+	controllers.New()
 
 	// Create mux Router and setup routes
 	rs.Router = mux.NewRouter()
