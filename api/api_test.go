@@ -1,10 +1,13 @@
-package api
+package apis
 
 import (
 	"testing"
 )
 
 func TestTriviaRequest(t *testing.T) {
+	// Create api object
+	api := New()
+
 	// Test cases
 	testCases := []struct {
 		categoryVal string
@@ -16,7 +19,7 @@ func TestTriviaRequest(t *testing.T) {
 
 	for _, tt := range testCases {
 		limitVal := 0
-		gotVals, gotTimestamp, gotError := TriviaRequest(tt.categoryVal, limitVal)
+		gotVals, gotTimestamp, gotError := api.triviaRequest(tt.categoryVal, limitVal)
 
 		gotValsSize := len(gotVals)
 		categoryValSize := len(tt.categoryVal)
@@ -69,11 +72,13 @@ func TestTriviaRequest(t *testing.T) {
 }
 
 func BenchmarkTriviaRequest(b *testing.B) {
+	api := New()
+
 	// benchmark
 	category := ""
 	limit := 10
 
 	for idx := 0; idx < b.N; idx++ {
-		TriviaRequest(category, limit)
+		api.triviaRequest(category, limit)
 	}
 }
