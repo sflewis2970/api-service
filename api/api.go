@@ -1,4 +1,4 @@
-package api
+package apis
 
 import (
 	"encoding/json"
@@ -7,7 +7,10 @@ import (
 	"log"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/sflewis2970/trivia-service/common"
+	"github.com/sflewis2970/trivia-service/datastores"
+	"github.com/sflewis2970/trivia-service/messages"
 )
 
 const (
@@ -33,17 +36,90 @@ type TriviaResponse struct {
 	Answer   string `json:"answer"`
 }
 
-func isItemInCategoryList(item string) bool {
-	for _, category := range CategoryList {
-		if item == category {
-			return true
+type API struct {
+}
+
+// exported type method
+func (a *API) GetQuestion() (messages.QuestionResponse, datastores.DataStoreTable) {
+	// Initialize data store when needed
+	categoryStr := ""
+	limit := 0
+	requestComplete := false
+	var apiResponseErr error
+	var apiResponses []TriviaResponse
+	apiResponsesSize := 0
+	timestamp := ""
+
+	// Check for duplicates for marking the request as complete
+	for !requestComplete {
+		// Send request to API
+		apiResponses, timestamp, apiResponseErr = a.triviaRequest(categoryStr, limit)
+
+		// Get API Response size
+		apiResponsesSize = len(apiResponses)
+
+		if apiResponsesSize > 0 {
+			// When results are returned, make sure there are no duplicate answers
+			if !a.containsDuplicates(apiResponses) {
+				log.Print("No duplicates found...")
+				requestComplete = true
+			} else {
+				log.Print("Found duplicates...")
+			}
+		} else {
+			// An error occurred or no results found
+			requestComplete = true
 		}
 	}
 
-	return false
+	// Question (Request) Response message
+	var qResponse messages.QuestionResponse
+
+	// Build API Response
+	qResponse.Timestamp = timestamp
+
+	var dsTable datastores.DataStoreTable
+	if apiResponseErr != nil {
+		// If an error occurs let the client know
+		qResponse.Error = apiResponseErr.Error()
+	} else if apiResponsesSize == 0 {
+		// If no error occurs but no response is returned
+		// let the client know, the most likely case where this happens
+		// is when the client supplies a category that does not exist
+		qResponse.Warning = "No question was returned, invalid category selected"
+	} else {
+		// Since the client is no longer allowed to supply a limit
+		// there should be five items returned from the API
+		// After getting a valid response from the API, generate a question ID
+		qResponse.QuestionID = uuid.New().String()
+		qResponse.QuestionID = common.BuildUUID(qResponse.QuestionID, messages.DASH, messages.ONE_SET)
+		qResponse.Category = apiResponses[0].Category
+		qResponse.Question = apiResponses[0].Question
+
+		// Build choices string
+		choiceList := []string{}
+		for idx := 0; idx < apiResponsesSize; idx++ {
+			choiceList = append(choiceList, apiResponses[idx].Answer)
+		}
+
+		// Shuttle list
+		choiceList = common.ShuffleList(choiceList)
+
+		// Add a message filler to the beginning of the list
+		qResponse.Choices = append(qResponse.Choices, messages.MAKE_SELECTION_MSG)
+		qResponse.Choices = append(qResponse.Choices, choiceList...)
+
+		// Create data store table struct
+		dsTable.Question = qResponse.Question
+		dsTable.Category = qResponse.Category
+		dsTable.Answer = apiResponses[0].Answer
+	}
+
+	return qResponse, dsTable
 }
 
-func TriviaRequest(category string, limit int) ([]TriviaResponse, string, error) {
+// unexported type method
+func (a *API) triviaRequest(category string, limit int) ([]TriviaResponse, string, error) {
 	// Build URL string
 	url := TriviaURL
 
@@ -107,4 +183,41 @@ func TriviaRequest(category string, limit int) ([]TriviaResponse, string, error)
 
 	// Return a valid response (in JSON format) as well as a timestamp
 	return responses, timestamp, nil
+}
+
+// containsDuplicates checks the slice for any duplicate items
+func (a *API) containsDuplicates(items []TriviaResponse) bool {
+	// Initialize the map for usage
+	itemsMap := make(map[string]int)
+
+	// Since maps uses unique keys, use the string value of answer to be the key
+	for idx, item := range items {
+		itemsMap[item.Answer] = idx + 1
+	}
+
+	// If the size of the map is the same size of the slice, then there are no duplicates
+	if len(itemsMap) != len(items) {
+		return true
+	}
+
+	// Otherwise return false
+	return false
+}
+
+func New() *API {
+	log.Print("Creating API object...")
+	api := new(API)
+
+	return api
+}
+
+// unexported functions
+func isItemInCategoryList(item string) bool {
+	for _, category := range CategoryList {
+		if item == category {
+			return true
+		}
+	}
+
+	return false
 }
