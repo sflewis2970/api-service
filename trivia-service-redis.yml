@@ -10,22 +10,22 @@ services:
       - cache:/data
 
   dsapi:
-    image: ds-service
+    image: sflewis/datastore-service
     container_name: CNT-DSService
     depends_on: 
       - cache
     ports:
       - 9090:9090
     environment:
-      HOST: 
+      HOST:
       PORT: 9090
-      ACTIVEDRIVER: goredis
-      GOREDIS_HOST: cache
-      GOREDIS_PORT: 6379
-      GOREDIS_PASSWORD: 
+      ACTIVEDRIVER: redis
+      REDIS_TLS_URL: cache
+      REDIS_URL: cache
+      REDIS_PORT: 6379
 
   trivia-service:
-    image: trivia-service
+    image: sflewis/trivia-service
     container_name: CNT-TriviaService
     depends_on: 
       - dsapi
