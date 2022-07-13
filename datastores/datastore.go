@@ -10,6 +10,11 @@ import (
 	"github.com/sflewis2970/trivia-service/config"
 )
 
+const (
+	NBR_OF_ATTEMPTS int = 3
+	DELAY_IN_SECS   int = 6
+)
+
 // Datastore struct
 type DataStore struct {
 	cfgData      *config.ConfigData
@@ -149,10 +154,12 @@ func New() *DataStore {
 		return nil
 	}
 
+	// Initialize status code
 	ds.serverStatus = StatusCode(DS_NOT_STARTED)
 
 	// Wait for DataStore server to become available
-	for ds.serverStatus != StatusCode(DS_RUNNING) {
+	nbrOfAttempts := NBR_OF_ATTEMPTS
+	for ds.serverStatus != StatusCode(DS_RUNNING) || nbrOfAttempts > 0 {
 		// Get datastore server status
 		ds.serverStatus = ds.sendStatusRequest()
 
@@ -163,8 +170,11 @@ func New() *DataStore {
 			log.Print("waiting for Datastore server...")
 		}
 
+		// Decrement retry counter
+		nbrOfAttempts--
+
 		// Sleep for 3 seconds
-		time.Sleep(time.Second * 3)
+		time.Sleep(time.Second * time.Duration(DELAY_IN_SECS))
 	}
 
 	return ds
