@@ -33,7 +33,7 @@ func main() {
 	corsHandler := cors.Handler(rs.Router)
 
 	// Server Address info
-	addr := cfgData.HostName + cfgData.HostPort
+	addr := cfgData.Host + ":" + cfgData.Port
 	log.Print("The address used by the service is: ", addr)
 
 	// Start Server

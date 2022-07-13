@@ -17,8 +17,8 @@ const UPDATE_CONFIG_DATA string = "update"
 // Config variable keys
 const (
 	// Host system info
-	HOSTNAME string = "HOSTNAME"
-	HOSTPORT string = "HOSTPORT"
+	HOST string = "HOST"
+	PORT string = "PORT"
 
 	// Datastore Server info
 	DSNAME string = "DS_NAME"
@@ -35,8 +35,8 @@ type Message struct {
 }
 
 type ConfigData struct {
-	HostName      string `json:"hostname"`
-	HostPort      string `json:"hostport"`
+	Host          string `json:"hostname"`
+	Port          string `json:"hostport"`
 	DataStoreName string `json:"dsname"`
 	DataStorePort string `json:"dsport"`
 	Messages      Message
@@ -104,8 +104,8 @@ func (c *config) getConfigEnv() error {
 
 	// Update config data
 	// Base config settings
-	c.cfgData.HostName = os.Getenv(HOSTNAME)
-	c.cfgData.HostPort = os.Getenv(HOSTPORT)
+	c.cfgData.Host = os.Getenv(HOST)
+	c.cfgData.Port = os.Getenv(PORT)
 	c.cfgData.DataStoreName = os.Getenv(DSNAME)
 	c.cfgData.DataStorePort = os.Getenv(DSPORT)
 
