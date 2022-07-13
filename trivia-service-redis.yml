@@ -17,11 +17,11 @@ services:
     ports:
       - 9090:9090
     environment:
-      HOSTNAME: 
-      HOSTPORT: :9090
+      HOST: 
+      PORT: 9090
       ACTIVEDRIVER: goredis
       GOREDIS_HOST: cache
-      GOREDIS_PORT: :6379
+      GOREDIS_PORT: 6379
       GOREDIS_PASSWORD: 
 
   trivia-service:
@@ -32,10 +32,10 @@ services:
     ports:
       - 8080:8080
     environment:
-      HOSTNAME:
-      HOSTPORT: :8080
-      DS_NAME: dsapi
-      DS_PORT: :9090
+      HOST:
+      PORT: 8080
+      DS_NAME: http://dsapi
+      DS_PORT: 9090
 
 volumes:
   cache:
