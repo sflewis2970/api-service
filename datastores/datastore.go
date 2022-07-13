@@ -67,7 +67,7 @@ func (ds *DataStore) Get(questionID string) (string, *QuestionAndAnswer, error) 
 	}
 
 	// Create a http request
-	url := "http://" + ds.cfgData.DataStoreName + ds.cfgData.DataStorePort + DS_GET_PATH
+	url := ds.cfgData.DataStoreName + ":" + ds.cfgData.DataStorePort + DS_GET_PATH
 	response, postErr := http.Post(url, "application/json", bytes.NewBuffer(requestBody))
 	if postErr != nil {
 		return "", nil, postErr
