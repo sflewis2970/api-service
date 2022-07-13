@@ -16,6 +16,9 @@ const UPDATE_CONFIG_DATA string = "update"
 
 // Config variable keys
 const (
+	// System ENV setting
+	ENV string = "ENV"
+
 	// Host system info
 	HOST string = "HOST"
 	PORT string = "PORT"
@@ -29,12 +32,18 @@ const (
 	TRYAGAIN string = "TRYAGAIN"
 )
 
+// Config variable values
+const (
+	PRODUCTION string = "PROD"
+)
+
 type Message struct {
 	CongratsMsg string `json:"congrats"`
 	TryAgainMsg string `json:"tryagain"`
 }
 
 type ConfigData struct {
+	Env           string `json:"env"`
 	Host          string `json:"hostname"`
 	Port          string `json:"hostport"`
 	DataStoreName string `json:"dsname"`
@@ -104,6 +113,7 @@ func (c *config) getConfigEnv() error {
 
 	// Update config data
 	// Base config settings
+	c.cfgData.Env = os.Getenv(ENV)
 	c.cfgData.Host = os.Getenv(HOST)
 	c.cfgData.Port = os.Getenv(PORT)
 	c.cfgData.DataStoreName = os.Getenv(DSNAME)

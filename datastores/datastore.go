@@ -35,7 +35,13 @@ func (ds *DataStore) Insert(questionID string, dst DataStoreTable) error {
 	}
 
 	// Post request
-	url := ds.cfgData.DataStoreName + ":" + ds.cfgData.DataStorePort + DS_INSERT_PATH
+	var url string
+	if ds.cfgData.Env == config.PRODUCTION {
+		url = ds.cfgData.DataStoreName + DS_INSERT_PATH
+	} else {
+		url = ds.cfgData.DataStoreName + ":" + ds.cfgData.DataStorePort + DS_INSERT_PATH
+	}
+
 	response, postErr := http.Post(url, "application/json", bytes.NewBuffer(requestBody))
 	if postErr != nil {
 		return postErr
@@ -67,7 +73,13 @@ func (ds *DataStore) Get(questionID string) (string, *QuestionAndAnswer, error) 
 	}
 
 	// Create a http request
-	url := ds.cfgData.DataStoreName + ":" + ds.cfgData.DataStorePort + DS_GET_PATH
+	var url string
+	if ds.cfgData.Env == config.PRODUCTION {
+		url = ds.cfgData.DataStoreName + DS_GET_PATH
+	} else {
+		url = ds.cfgData.DataStoreName + ":" + ds.cfgData.DataStorePort + DS_GET_PATH
+	}
+
 	response, postErr := http.Post(url, "application/json", bytes.NewBuffer(requestBody))
 	if postErr != nil {
 		return "", nil, postErr
@@ -97,7 +109,13 @@ func (ds *DataStore) Get(questionID string) (string, *QuestionAndAnswer, error) 
 
 // SendStatusRequest sends a request for the status of the datastore server
 func (ds *DataStore) sendStatusRequest() StatusCode {
-	url := ds.cfgData.DataStoreName + ":" + ds.cfgData.DataStorePort + DS_STATUS_PATH
+	var url string
+	if ds.cfgData.Env == config.PRODUCTION {
+		url = ds.cfgData.DataStoreName + DS_STATUS_PATH
+	} else {
+		url = ds.cfgData.DataStoreName + ":" + ds.cfgData.DataStorePort + DS_STATUS_PATH
+	}
+
 	log.Print("sending status request to ", url)
 
 	// http request
