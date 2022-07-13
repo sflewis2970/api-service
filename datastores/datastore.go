@@ -35,7 +35,7 @@ func (ds *DataStore) Insert(questionID string, dst DataStoreTable) error {
 	}
 
 	// Post request
-	url := "http://" + ds.cfgData.DataStoreName + ds.cfgData.DataStorePort + DS_INSERT_PATH
+	url := ds.cfgData.DataStoreName + ds.cfgData.DataStorePort + DS_INSERT_PATH
 	response, postErr := http.Post(url, "application/json", bytes.NewBuffer(requestBody))
 	if postErr != nil {
 		return postErr
@@ -97,7 +97,7 @@ func (ds *DataStore) Get(questionID string) (string, *QuestionAndAnswer, error) 
 
 // SendStatusRequest sends a request for the status of the datastore server
 func (ds *DataStore) sendStatusRequest() StatusCode {
-	url := "http://" + ds.cfgData.DataStoreName + ds.cfgData.DataStorePort + DS_STATUS_PATH
+	url := ds.cfgData.DataStoreName + ds.cfgData.DataStorePort + DS_STATUS_PATH
 	log.Print("sending status request to ", url)
 
 	// http request
