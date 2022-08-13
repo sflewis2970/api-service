@@ -9,33 +9,19 @@ services:
     volumes:
       - cache:/data
 
-  dsapi:
-    image: sflewis/datastore-service
-    container_name: CNT-DSService
+  api-service:
+    image: sflewis/api-service
+    container_name: CNT-APIService
     depends_on: 
       - cache
-    ports:
-      - 9090:9090
-    environment:
-      HOST:
-      PORT: 9090
-      ACTIVEDRIVER: redis
-      REDIS_TLS_URL: cache
-      REDIS_URL: cache
-      REDIS_PORT: 6379
-
-  trivia-service:
-    image: sflewis/trivia-service
-    container_name: CNT-TriviaService
-    depends_on: 
-      - dsapi
     ports:
       - 8080:8080
     environment:
       HOST:
       PORT: 8080
-      DS_NAME: http://dsapi
-      DS_PORT: 9090
+      REDIS_TLS_URL: cache
+      REDIS_URL: cache
+      REDIS_PORT: 6379
 
 volumes:
   cache:
