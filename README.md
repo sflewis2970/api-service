@@ -1,2 +1,2 @@
-# trivia-service
+# api-service
 web service that provides trivia questions across different categories
