@@ -1,6 +1,8 @@
 package models
 
 import (
+	"errors"
+	"fmt"
 	"github.com/sflewis2970/trivia-service/common"
 	"github.com/sflewis2970/trivia-service/config"
 	"github.com/sflewis2970/trivia-service/messages"
@@ -12,7 +14,7 @@ import (
 
 var model *TriviaModel
 
-func initialize(t *testing.T) {
+func initialize() {
 	// Initialize logging
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 
@@ -25,18 +27,17 @@ func initialize(t *testing.T) {
 	_ = os.Setenv(config.REDIS_URL, "localhost")
 	_ = os.Setenv(config.REDIS_PORT, "6379")
 
+	// DB Test setting
+	// For now, we will test against a real database. To do so uncomment the following line
+	// Later, database mocking will be added
+	// _ = os.Setenv("DB_TEST", "TESTDB")
+
 	// Create config object
 	// Get config data
-	_, cfgDataErr := config.Get().GetData(config.UPDATE_CONFIG_DATA)
-	if cfgDataErr != nil {
-		t.Errorf("GetData(%v): error not expected, got %v", config.UPDATE_CONFIG_DATA, cfgDataErr)
-	}
+	_, _ = config.Get().GetData(config.UPDATE_CONFIG_DATA)
 
 	// Create TriviaModel
 	model = NewTriviaModel()
-	if model == nil {
-		t.Errorf("NewTriviaModel(): unexpected error occurred, call returned %v", model)
-	}
 }
 
 func createTrivia() messages.Trivia {
@@ -61,45 +62,195 @@ func createAnswerRequest(response string) messages.AnswerRequest {
 	return aRequest
 }
 
-func TestAddTriviaQuestion(t *testing.T) {
-	initialize(t)
+func AddTriviaQuestionTestCase() error {
+	// Create trivia object
 	trivia := createTrivia()
-	_ = model.AddTriviaQuestion(trivia)
-	/*
-		if addErr != nil {
-			t.Errorf("AddTriviaQuestion(%v): unexpected error occurred, call returned %v", trivia, addErr.Error())
-		}
-	*/
+
+	// Add trivia to database
+	addErr := model.AddTriviaQuestion(trivia)
+	if addErr != nil {
+		errMsg := fmt.Sprintf("AddTriviaQuestion(%v): unexpected error occurred, call returned %v", trivia, addErr.Error())
+		errors.New(errMsg)
+	}
+
+	return nil
 }
 
-func TestGetTriviaQuestion(t *testing.T) {
-	initialize(t)
+func TestAddTriviaQuestion(t *testing.T) {
+	initialize()
+
+	// Check model creation
+	if model == nil {
+		t.Errorf("model has invalid value: %v", model)
+	}
+
+	// Check dbtest settings
+	dbTest := os.Getenv("DB_TEST")
+	if len(dbTest) == 0 {
+		log.Print("Environment variable not set...skipping test")
+		t.Skip()
+	}
+
+	addErr := AddTriviaQuestionTestCase()
+	if addErr != nil {
+		t.Errorf("AddTriviaQuestionTestCase() return an error: %v", addErr.Error())
+	}
+}
+
+func GetTriviaAnswerTestCase() error {
+	// Simulate user responses
 	responses := []string{"1", "2", "3", "4", "999"}
 
 	for _, response := range responses {
 		aRequest := createAnswerRequest(response)
 		_, answerErr := model.GetTriviaAnswer(aRequest)
 		if answerErr != nil {
-			t.Errorf("GetTriviaAnswer(%v): unexpected error occurred, call returned %v", aRequest, answerErr.Error())
+			errMsg := fmt.Sprintf("GetTriviaAnswer(%v): unexpected error occurred, call returned %v", aRequest, answerErr.Error())
+			return errors.New(errMsg)
 		}
+	}
+
+	return nil
+}
+
+func TestGetTriviaAnswer(t *testing.T) {
+	initialize()
+
+	// Check model creation
+	if model == nil {
+		t.Errorf("model has invalid value: %v", model)
+	}
+
+	// Check dbtest settings
+	dbTest := os.Getenv("DB_TEST")
+	if len(dbTest) == 0 {
+		log.Print("Environment variable not set...skipping test")
+		t.Skip()
+	}
+
+	getErr := GetTriviaAnswerTestCase()
+	if getErr != nil {
+		t.Errorf("GetTriviaAnswerTestCase() return an error: %v", getErr.Error())
 	}
 }
 
-func TestDeleteTriviaQuestion(t *testing.T) {
-	initialize(t)
+func DeleteTriviaQuestionTestCase() error {
+	// Create trivia object
 	trivia := createTrivia()
+
+	// Add trivia to database
 	addErr := model.AddTriviaQuestion(trivia)
 	if addErr != nil {
-		t.Errorf("AddTriviaQuestion(%v): unexpected error occurred, call returned %v", trivia, addErr.Error())
+		errMsg := fmt.Sprintf("AddTriviaQuestion(%v): unexpected error occurred, call returned %v", trivia, addErr.Error())
+		return errors.New(errMsg)
 	}
 
+	// delete trivia from database
 	delErr := model.DeleteTriviaQuestion(trivia.QuestionID)
 	if delErr != nil {
-		t.Errorf("DeleteTriviaQuestion(%v): unexpected error occurred, call returned %v", trivia.QuestionID, delErr.Error())
+		errMsg := fmt.Sprintf("DeleteTriviaQuestion(%v): unexpected error occurred, call returned %v", trivia.QuestionID, delErr.Error())
+		return errors.New(errMsg)
+	}
+
+	return nil
+}
+
+func TestDeleteTriviaQuestion(t *testing.T) {
+	initialize()
+
+	// Check model creation
+	if model == nil {
+		t.Errorf("model has invalid value: %v", model)
+	}
+
+	// Check dbtest setting
+	dbTest := os.Getenv("DB_TEST")
+	if len(dbTest) == 0 {
+		log.Print("Environment variable not set...skipping test")
+		t.Skip()
+	}
+
+	delErr := DeleteTriviaQuestionTestCase()
+	if delErr != nil {
+		t.Errorf("DeleteTriviaQuestionTestCase() return an error: %v", delErr.Error())
 	}
 }
 
 func TestNewModel(t *testing.T) {
 	// Initialize environment for testing
-	initialize(t)
+	initialize()
+
+	// Check model creation
+	if model == nil {
+		t.Errorf("model has invalid value: %v", model)
+	}
+}
+
+func BenchmarkAddTriviaQuestion(b *testing.B) {
+	initialize()
+
+	// Check model creation
+	if model == nil {
+		b.Errorf("model has invalid value: %v", model)
+	}
+
+	dbTest := os.Getenv("DB_TEST")
+	if len(dbTest) == 0 {
+		log.Print("Environment variable not set...skipping test")
+		b.Skip()
+	}
+
+	for idx := 0; idx < b.N; idx++ {
+		// Create Trivia Question
+		tcErr := AddTriviaQuestionTestCase()
+		if tcErr != nil {
+			b.Errorf(tcErr.Error())
+		}
+	}
+}
+
+func BenchmarkGetTriviaAnswer(b *testing.B) {
+	initialize()
+
+	// Check model creation
+	if model == nil {
+		b.Errorf("model has invalid value: %v", model)
+	}
+
+	dbTest := os.Getenv("DB_TEST")
+	if len(dbTest) == 0 {
+		log.Print("Environment variable not set...skipping test")
+		b.Skip()
+	}
+
+	for idx := 0; idx < b.N; idx++ {
+		// Create Trivia Question
+		tcErr := GetTriviaAnswerTestCase()
+		if tcErr != nil {
+			b.Errorf(tcErr.Error())
+		}
+	}
+}
+
+func BenchmarkDeleteTriviaQuestion(b *testing.B) {
+	initialize()
+
+	// Check model creation
+	if model == nil {
+		b.Errorf("model has invalid value: %v", model)
+	}
+
+	dbTest := os.Getenv("DB_TEST")
+	if len(dbTest) == 0 {
+		log.Print("Environment variable not set...skipping test")
+		b.Skip()
+	}
+
+	for idx := 0; idx < b.N; idx++ {
+		// Create Trivia Question
+		tcErr := DeleteTriviaQuestionTestCase()
+		if tcErr != nil {
+			b.Errorf(tcErr.Error())
+		}
+	}
 }
