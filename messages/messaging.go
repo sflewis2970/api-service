@@ -3,21 +3,26 @@ package messages
 const MAKE_SELECTION_MSG string = "Make Selection from list..."
 
 const (
-	DASH             string = "-"
-	COMMA            string = ","
-	SPACE            string = " "
-	ONE_SET          int    = 1
-	FIND_ERROR       int    = -1
-	EMPTY_QUESTIONID int    = 0
-	EMPTY_QUESTION   int    = 0
-	EMPTY_ANSWER     int    = 0
-	EMPTY_CATEGORY   int    = 0
-	EMPTY_CHOICES    int    = 0
-	EMPTY_TIMESTAMP  int    = 0
-	EMPTY_WARNING    int    = 0
+	DASH    string = "-"
+	ONE_SET int    = 1
 )
 
-// Client-server communication
+type Trivia struct {
+	QuestionID string   `json:"questionid"`
+	Question   string   `json:"question"`
+	Category   string   `json:"category"`
+	Answer     string   `json:"answer"`
+	Choices    []string `json:"choices"`
+	Timestamp  string   `json:"timestamp"`
+}
+
+type TriviaTable struct {
+	Question string `json:"question"`
+	Category string `json:"category"`
+	Answer   string `json:"answer"`
+}
+
+// QuestionResponse Request-Response messaging
 type QuestionResponse struct {
 	QuestionID string   `json:"questionid"`
 	Question   string   `json:"question"`

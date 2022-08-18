@@ -15,12 +15,12 @@ type HTTPHeader struct {
 	Value string
 }
 
-// Build formatted time string
+// GetFormattedTime Build formatted time string
 func GetFormattedTime(timeNow time.Time, timeFormat string) string {
 	return timeNow.Format(timeFormat)
 }
 
-// Get working directory
+// GetWorkingDir Get working directory
 func GetWorkingDir() (string, error) {
 	workingDir, getErr := os.Getwd()
 	if getErr != nil {
@@ -31,7 +31,7 @@ func GetWorkingDir() (string, error) {
 	return workingDir, nil
 }
 
-// Build UUID string
+// BuildUUID Build UUID string
 func BuildUUID(uuid string, delimiter string, nbrOfGroups int) string {
 	newUUID := ""
 
@@ -45,21 +45,9 @@ func BuildUUID(uuid string, delimiter string, nbrOfGroups int) string {
 	return newUUID
 }
 
-// Utility to build strings seperated by a delimiter
-func BuildDelimitedStr(strs []string, delimiter string) string {
-	newStr := ""
+// BuildDelimitedStr Utility to build strings seperated by a delimiter
 
-	strSize := len(strs)
-	for idx := 0; idx < strSize-1; idx++ {
-		newStr = newStr + strs[idx] + delimiter
-	}
-
-	newStr = newStr + strs[strSize-1]
-
-	return newStr
-}
-
-// Utility to move string item to a different position within the list
+// ShuffleList Utility to move string item to a different position within the list
 func ShuffleList(strList []string) []string {
 	rand.Shuffle(len(strList), func(idx1, idx2 int) {
 		strList[idx1], strList[idx2] = strList[idx2], strList[idx1]

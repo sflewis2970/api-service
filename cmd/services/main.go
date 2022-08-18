@@ -6,7 +6,7 @@ import (
 
 	"github.com/rs/cors"
 	"github.com/sflewis2970/trivia-service/config"
-	"github.com/sflewis2970/trivia-service/routes"
+	"github.com/sflewis2970/trivia-service/controllers"
 )
 
 func main() {
@@ -14,23 +14,23 @@ func main() {
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 
 	// Get config data
-	cfgData, getCfgDataErr := config.Get().GetData(config.UPDATE_CONFIG_DATA)
-	if getCfgDataErr != nil {
-		log.Fatal("Error getting config data: ", getCfgDataErr)
+	cfgData, cfgDataErr := config.Get().GetData(config.UPDATE_CONFIG_DATA)
+	if cfgDataErr != nil {
+		log.Fatal("Error getting config data: ", cfgDataErr)
 	}
 
-	// Create App
-	rs := routes.New()
+	// Create controller
+	controller := controllers.New()
 
 	// setup Cors
 	log.Print("Setting up CORS...")
-	cors := cors.New(cors.Options{
+	corsOptionsHandler := cors.New(cors.Options{
 		AllowedOrigins:   []string{"*"},
 		AllowedMethods:   []string{http.MethodPost, http.MethodGet},
 		AllowedHeaders:   []string{"*"},
 		AllowCredentials: false,
 	})
-	corsHandler := cors.Handler(rs.Router)
+	corsHandler := corsOptionsHandler.Handler(controller.Router)
 
 	// Server Address info
 	addr := cfgData.Host + ":" + cfgData.Port

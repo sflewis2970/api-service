@@ -3,40 +3,50 @@ package controllers
 import (
 	"log"
 
-	apis "github.com/sflewis2970/trivia-service/api"
+	"github.com/gorilla/mux"
 	"github.com/sflewis2970/trivia-service/config"
-	"github.com/sflewis2970/trivia-service/models"
+	"github.com/sflewis2970/trivia-service/handlers/trivia"
 )
 
 // Controller struct definition
 type Controller struct {
-	cfgData     *config.ConfigData
-	publicAPI   *apis.API
-	triviaModel *models.Model
+	cfgData       *config.CfgData
+	Router        *mux.Router
+	triviaHandler *trivia.TriviaHandler
 }
 
-// Packge controller object
+// Package controller object
 var controller *Controller
 
-// Export functions
-func New() {
-	if controller == nil {
-		// Create controller component
-		log.Print("Creating controller object...")
-		controller = new(Controller)
+func (c *Controller) setupRoutes() {
+	// Display log message
+	log.Print("Setting up trivia service routes")
 
-		// Load config data
-		var getCfgDataErr error
-		controller.cfgData, getCfgDataErr = config.Get().GetData()
-		if getCfgDataErr != nil {
-			log.Print("Error getting config data: ", getCfgDataErr)
-			return
-		}
+	// Trivia routes
+	c.Router.HandleFunc("/api/v1/trivia/questions", c.triviaHandler.GetTriviaQuestion).Methods("GET")
+	c.Router.HandleFunc("/api/v1/trivia/questions", c.triviaHandler.SubmitTriviaAnswer).Methods("POST")
+}
 
-		// Create trivia model
-		controller.triviaModel = models.New()
+// New Export functions
+func New() *Controller {
+	// Create controller component
+	log.Print("Creating controller object...")
+	controller = new(Controller)
 
-		// Create trivia api
-		controller.publicAPI = apis.New()
+	// Load config data
+	var getCfgDataErr error
+	controller.cfgData, getCfgDataErr = config.Get().GetData()
+	if getCfgDataErr != nil {
+		log.Print("Error getting config data: ", getCfgDataErr)
+		return nil
 	}
+
+	// Trivia handlers
+	controller.triviaHandler = trivia.New()
+
+	// Set controller routes
+	controller.Router = mux.NewRouter()
+	controller.setupRoutes()
+
+	return controller
 }

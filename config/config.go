@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"log"
+	"net/url"
 	"os"
 	"strings"
 
@@ -11,48 +12,52 @@ import (
 )
 
 const BASE_DIR_NAME string = "trivia-service"
-const CONFIG_FILE_NAME = "./config/config.json"
+const CFG_FILE_NAME = "./config/config.json"
 const UPDATE_CONFIG_DATA string = "update"
 
 // Config variable keys
 const (
-	// System ENV setting
+	// ENV System ENV setting
 	ENV string = "ENV"
 
-	// Host system info
+	// HOST system info
 	HOST string = "HOST"
 	PORT string = "PORT"
 
-	// Datastore Server info
-	DSNAME string = "DS_NAME"
-	DSPORT string = "DS_PORT"
-
-	// Response Messages
-	CONGRATS string = "CONGRATS"
-	TRYAGAIN string = "TRYAGAIN"
+	// REDIS_TLS_URL Redis Constants
+	REDIS_TLS_URL  string = "REDIS_TLS_URL"
+	REDIS_URL      string = "REDIS_URL"
+	REDIS_PORT     string = "REDIS_PORT"
+	REDIS_PASSWORD string = "REDIS_PASSWORD"
 )
 
-// Config variable values
+// PRODUCTION Config variable values
 const (
 	PRODUCTION string = "PROD"
 )
+
+type Redis struct {
+	TLS_URL  string `json:"tls_url"`
+	URL      string `json:"host"`
+	Port     string `json:"port"`
+	Password string `json:"password"`
+}
 
 type Message struct {
 	CongratsMsg string `json:"congrats"`
 	TryAgainMsg string `json:"tryagain"`
 }
 
-type ConfigData struct {
-	Env           string `json:"env"`
-	Host          string `json:"hostname"`
-	Port          string `json:"hostport"`
-	DataStoreName string `json:"dsname"`
-	DataStorePort string `json:"dsport"`
-	Messages      Message
+type CfgData struct {
+	Env      string `json:"env"`
+	Host     string `json:"hostname"`
+	Port     string `json:"hostport"`
+	Messages Message
+	Redis    Redis
 }
 
 type config struct {
-	cfgData *ConfigData
+	cfgData *CfgData
 }
 
 var cfg *config
@@ -87,14 +92,14 @@ func (c *config) readConfigFile() error {
 	for levels > 0 {
 		chErr := os.Chdir("..")
 		if chErr != nil {
-			log.Print("Error changind dir: ", chErr)
+			log.Print("Error changing dir: ", chErr)
 		}
 
 		// Update levels
 		levels--
 	}
 
-	data, readErr := ioutil.ReadFile(CONFIG_FILE_NAME)
+	data, readErr := ioutil.ReadFile(CFG_FILE_NAME)
 	if readErr != nil {
 		return readErr
 	}
@@ -116,17 +121,51 @@ func (c *config) getConfigEnv() error {
 	c.cfgData.Env = os.Getenv(ENV)
 	c.cfgData.Host = os.Getenv(HOST)
 	c.cfgData.Port = os.Getenv(PORT)
-	c.cfgData.DataStoreName = os.Getenv(DSNAME)
-	c.cfgData.DataStorePort = os.Getenv(DSPORT)
 
 	// Get response messages
 	c.cfgData.Messages.CongratsMsg = "Congratulations! That is correct"
 	c.cfgData.Messages.TryAgainMsg = "Nice Try! Better luck on the next answer"
 
+	// Go-redis settings
+	log.Print("Setting go-redis environment variables...")
+	c.cfgData.Redis.TLS_URL = os.Getenv(REDIS_TLS_URL)
+	c.cfgData.Redis.URL = os.Getenv(REDIS_URL)
+	c.cfgData.Redis.Port = os.Getenv(REDIS_PORT)
+
+	if c.cfgData.Env == PRODUCTION {
+		log.Print("Loading prod settings...")
+		redisURL, parseErr := url.Parse(c.cfgData.Redis.URL)
+		if parseErr != nil {
+			log.Print("Error parsing url: ", parseErr)
+			return parseErr
+		}
+
+		// Update URL and Port after parsing
+		delimiter := ":"
+		if strings.Contains(redisURL.Host, delimiter) {
+			urlSlice := strings.Split(redisURL.Host, delimiter)
+			c.cfgData.Redis.URL = urlSlice[0]
+			c.cfgData.Redis.Port = urlSlice[1]
+		} else {
+			c.cfgData.Redis.URL = redisURL.Host
+			c.cfgData.Redis.Port = ":" + redisURL.Port()
+		}
+
+		log.Print("Redis URL: ", c.cfgData.Redis.URL)
+		log.Print("Redis Port: ", c.cfgData.Redis.Port)
+
+		// redis Password
+		c.cfgData.Redis.Password, _ = redisURL.User.Password()
+	} else {
+		c.cfgData.Redis.URL = os.Getenv(REDIS_URL)
+		c.cfgData.Redis.Port = os.Getenv(REDIS_PORT)
+		c.cfgData.Redis.Password = os.Getenv(REDIS_PASSWORD)
+	}
+
 	return nil
 }
 
-func (c *config) GetData(args ...string) (*ConfigData, error) {
+func (c *config) GetData(args ...string) (*CfgData, error) {
 	if len(args) > 0 {
 		if args[0] == UPDATE_CONFIG_DATA {
 			useCfgFile := os.Getenv("USECONFIGFILE")
@@ -161,9 +200,10 @@ func Get() *config {
 		cfg = new(config)
 
 		// Initialize config data
-		cfg.cfgData = new(ConfigData)
+		cfg.cfgData = new(CfgData)
+	} else {
+		log.Print("returning config object")
 	}
 
-	log.Print("returning config object")
 	return cfg
 }

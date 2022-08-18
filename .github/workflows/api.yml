@@ -35,4 +35,4 @@ jobs:
       with: 
         context: .
         push: true
-        tags: sflewis/trivia-service:latest
+        tags: sflewis/api-service:latest

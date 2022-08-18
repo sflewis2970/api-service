@@ -1,18 +1,20 @@
-package apis
+package trivia
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/sflewis2970/trivia-service/common"
-	"github.com/sflewis2970/trivia-service/datastores"
 	"github.com/sflewis2970/trivia-service/messages"
 )
 
+//goland:noinspection SpellCheckingInspection,SpellCheckingInspection
 const (
 	RapidAPIHostKey string = "X-RapidAPI-Host"
 	RapidAPIKey     string = "X-RapidAPI-Key"
@@ -24,7 +26,6 @@ const (
 	TriviaCategoryCount  int = 14
 	EmptyRecordCount     int = 0
 	TriviaMaxRecordCount int = 5
-	APIMaxRecordCount    int = 30
 )
 
 var CategoryList = [TriviaCategoryCount]string{"artliterature", "language", "sciencenature", "general", "fooddrink", "peopleplaces",
@@ -39,10 +40,10 @@ type TriviaResponse struct {
 type API struct {
 }
 
-// exported type method
-func (a *API) GetQuestion() (messages.QuestionResponse, datastores.DataStoreTable) {
+// GetTrivia exported type method
+func (a *API) GetTrivia(category string) (messages.Trivia, error) {
 	// Initialize data store when needed
-	categoryStr := ""
+	categoryLen := len(category)
 	limit := 0
 	requestComplete := false
 	var apiResponseErr error
@@ -50,10 +51,17 @@ func (a *API) GetQuestion() (messages.QuestionResponse, datastores.DataStoreTabl
 	apiResponsesSize := 0
 	timestamp := ""
 
+	// validate category
+	if categoryLen > 0 && !isItemInCategoryList(category) {
+		errMsg := fmt.Sprintf("%s is invalid", category)
+		log.Print(errMsg)
+		return messages.Trivia{}, errors.New(errMsg)
+	}
+
 	// Check for duplicates for marking the request as complete
 	for !requestComplete {
 		// Send request to API
-		apiResponses, timestamp, apiResponseErr = a.triviaRequest(categoryStr, limit)
+		apiResponses, timestamp, apiResponseErr = a.triviaRequest(category, limit)
 
 		// Get API Response size
 		apiResponsesSize = len(apiResponses)
@@ -73,31 +81,26 @@ func (a *API) GetQuestion() (messages.QuestionResponse, datastores.DataStoreTabl
 	}
 
 	// Question (Request) Response message
-	var qResponse messages.QuestionResponse
+	var trivia messages.Trivia
 
 	// Build API Response
-	qResponse.Timestamp = timestamp
+	trivia.Timestamp = timestamp
 
-	var dsTable datastores.DataStoreTable
 	if apiResponseErr != nil {
 		// If an error occurs let the client know
-		qResponse.Error = apiResponseErr.Error()
-	} else if apiResponsesSize == 0 {
-		// If no error occurs but no response is returned
-		// let the client know, the most likely case where this happens
-		// is when the client supplies a category that does not exist
-		qResponse.Warning = "No question was returned, invalid category selected"
+		return messages.Trivia{}, apiResponseErr
 	} else {
 		// Since the client is no longer allowed to supply a limit
 		// there should be five items returned from the API
 		// After getting a valid response from the API, generate a question ID
-		qResponse.QuestionID = uuid.New().String()
-		qResponse.QuestionID = common.BuildUUID(qResponse.QuestionID, messages.DASH, messages.ONE_SET)
-		qResponse.Category = apiResponses[0].Category
-		qResponse.Question = apiResponses[0].Question
+		trivia.QuestionID = uuid.New().String()
+		trivia.QuestionID = common.BuildUUID(trivia.QuestionID, messages.DASH, messages.ONE_SET)
+		trivia.Category = apiResponses[0].Category
+		trivia.Question = apiResponses[0].Question
+		trivia.Answer = apiResponses[0].Answer
 
 		// Build choices string
-		choiceList := []string{}
+		var choiceList []string
 		for idx := 0; idx < apiResponsesSize; idx++ {
 			choiceList = append(choiceList, apiResponses[idx].Answer)
 		}
@@ -106,24 +109,20 @@ func (a *API) GetQuestion() (messages.QuestionResponse, datastores.DataStoreTabl
 		choiceList = common.ShuffleList(choiceList)
 
 		// Add a message filler to the beginning of the list
-		qResponse.Choices = append(qResponse.Choices, messages.MAKE_SELECTION_MSG)
-		qResponse.Choices = append(qResponse.Choices, choiceList...)
-
-		// Create data store table struct
-		dsTable.Question = qResponse.Question
-		dsTable.Category = qResponse.Category
-		dsTable.Answer = apiResponses[0].Answer
+		trivia.Choices = append(trivia.Choices, messages.MAKE_SELECTION_MSG)
+		trivia.Choices = append(trivia.Choices, choiceList...)
 	}
 
-	return qResponse, dsTable
+	return trivia, nil
 }
 
 // unexported type method
+// triviaRequest is a function that sends a request to the API to retrieve the trivia
 func (a *API) triviaRequest(category string, limit int) ([]TriviaResponse, string, error) {
 	// Build URL string
 	url := TriviaURL
 
-	// Add optional parametes string
+	// Add optional parameters string
 	// Get category string
 	categoryLength := len(category)
 	if categoryLength > 0 {
@@ -161,7 +160,11 @@ func (a *API) triviaRequest(category string, limit int) ([]TriviaResponse, strin
 		log.Print("Error executing request...")
 		return nil, "", responseErr
 	}
-	defer response.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+		}
+	}(response.Body)
 
 	// Get timestamp right after receiving a valid request
 	timestamp := common.GetFormattedTime(time.Now(), "Mon Jan 2 15:04:05 2006")
@@ -169,7 +172,7 @@ func (a *API) triviaRequest(category string, limit int) ([]TriviaResponse, strin
 	// Parse request body
 	body, readErr := ioutil.ReadAll(response.Body)
 	if readErr != nil {
-		log.Print("Error reading response...")
+		log.Print("Error reading response...", readErr)
 		return nil, "", readErr
 	}
 
@@ -177,7 +180,7 @@ func (a *API) triviaRequest(category string, limit int) ([]TriviaResponse, strin
 	responses := make([]TriviaResponse, 0)
 	unmarshalErr := json.Unmarshal(body, &responses)
 	if unmarshalErr != nil {
-		log.Print("Error unmarshaling response...")
+		log.Print("Error unmarshalling response...")
 		return nil, "", unmarshalErr
 	}
 
