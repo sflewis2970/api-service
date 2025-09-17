@@ -27,51 +27,6 @@ func TestGetTrivia(t *testing.T) {
 	}
 }
 
-func TestTriviaRequest(t *testing.T) {
-	// Create api object
-	api := New()
-
-	// Test cases
-	testCases := []struct {
-		timestamp string
-		error     error
-	}{}
-
-	for _, value := range testCases {
-		fmt.Println("value: ", value.timestamp)
-		gotResponses, gotTimestamp, gotError := api.triviaRequest()
-
-		ResponseSize := len(gotResponses)
-		if ResponseSize == 0 {
-			t.Errorf("triviaRequest(): did not return a response.")
-		}
-
-		if gotError != nil {
-			t.Errorf("TriviaRequest(): error not expected, got %v", gotError)
-		}
-
-		if len(gotTimestamp) == 0 {
-			t.Errorf("TriviaRequest(): did not return a valid time stamp, got %v", gotTimestamp)
-		}
-
-		if gotError != nil {
-			t.Errorf("TriviaRequest(): error not expected, got %v", gotError)
-		}
-
-		if len(gotTimestamp) == 0 {
-			t.Errorf("TriviaRequest(): did not return a valid time stamp, got %s", gotTimestamp)
-		}
-
-		if gotError != nil {
-			t.Errorf("TriviaRequest(): error not expected, got %v", gotError)
-		}
-
-		if len(gotTimestamp) == 0 {
-			t.Errorf("TriviaRequest(): did not return a valid time stamp, got %s", gotTimestamp)
-		}
-	}
-}
-
 func TestReturnMultipleAnswers(t *testing.T) {
 	api := CreateNewAPI(t)
 
