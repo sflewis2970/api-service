@@ -1,6 +1,6 @@
 module github.com/sflewis2970/trivia-service
 
-go 1.18
+go 1.25.1
 
 require (
 	github.com/go-redis/redis/v8 v8.11.5
