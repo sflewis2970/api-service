@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/sflewis2970/trivia-service/config"
 	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
+
+	"github.com/sflewis2970/trivia-service/config"
 )
 
 func initialize() {
@@ -32,7 +33,8 @@ func initialize() {
 
 	// Create config object
 	// Get config data
-	_, _ = config.Get().GetData(config.UPDATE_CONFIG_DATA)
+	cfg := config.New()
+	cfg.GetData(config.REFRESH_CONFIG_DATA)
 }
 
 func GetTriviaQuestionTestCase() error {
@@ -61,18 +63,28 @@ func GetTriviaQuestionTestCase() error {
 }
 
 func TestGetTriviaQuestion(t *testing.T) {
-	initialize()
-
-	dbTest := os.Getenv("DB_TEST")
-	if len(dbTest) == 0 {
-		log.Print("Environment variable not set...skipping test")
-		t.Skip()
+	// Create request
+	request, reqErr := http.NewRequest("GET", "/api/v1/trivia/getquestion", nil)
+	if reqErr != nil {
+		return
 	}
 
-	tcErr := GetTriviaQuestionTestCase()
-	if tcErr != nil {
-		t.Errorf(tcErr.Error())
+	// We create a ResponseRecorder to record the response.
+	rr := httptest.NewRecorder()
+	triviaHandler := CreateNewHandlerObject()
+	handler := http.HandlerFunc(triviaHandler.GetTriviaQuestion)
+
+	// Server request
+	handler.ServeHTTP(rr, request)
+
+	// Check status code.
+	gotStatus := rr.Code
+	if (gotStatus != http.StatusOK) && (gotStatus != http.StatusCreated) {
+		errMsg := fmt.Sprintf("handler returned wrong status code: got: %d, expected: %d", gotStatus, http.StatusOK)
+		log.Print(errMsg)
+		return
 	}
+
 }
 
 func SubmitTriviaAnswerTestCase() error {
@@ -118,14 +130,31 @@ func TestSubmitTriviaAnswer(t *testing.T) {
 	// Create Trivia Question
 	tcErr := GetTriviaQuestionTestCase()
 	if tcErr != nil {
-		t.Errorf(tcErr.Error())
+		t.Errorf("%s\n", tcErr.Error())
 	}
 
 	// Submit Trivia Question Answer
 	tcErr = SubmitTriviaAnswerTestCase()
 	if tcErr != nil {
-		t.Errorf(tcErr.Error())
+		t.Errorf("%s\n", tcErr.Error())
 	}
+}
+
+func TestNewHandler(t *testing.T) {
+	newHandler := CreateNewHandlerObject()
+
+	if newHandler == nil {
+		t.Errorf("Could nort create Handler object!")
+	} else {
+		fmt.Println("Created trivia handler!")
+	}
+}
+
+func CreateNewHandlerObject() *TriviaHandler {
+	newHandler := New()
+
+	return newHandler
+
 }
 
 func BenchmarkGetTriviaQuestion(b *testing.B) {
@@ -141,7 +170,7 @@ func BenchmarkGetTriviaQuestion(b *testing.B) {
 		// Create Trivia Question
 		tcErr := GetTriviaQuestionTestCase()
 		if tcErr != nil {
-			b.Errorf(tcErr.Error())
+			b.Errorf("%s\n", tcErr.Error())
 		}
 	}
 }
@@ -158,14 +187,14 @@ func BenchmarkSubmitTriviaAnswer(b *testing.B) {
 	// Create Trivia Question
 	tcErr := GetTriviaQuestionTestCase()
 	if tcErr != nil {
-		b.Errorf(tcErr.Error())
+		b.Errorf("%s\n", tcErr.Error())
 	}
 
 	for idx := 0; idx < b.N; idx++ {
 		// Submit Trivia Question Answer
 		tcErr = SubmitTriviaAnswerTestCase()
 		if tcErr != nil {
-			b.Errorf(tcErr.Error())
+			b.Errorf("%s\n", tcErr.Error())
 		}
 	}
 }

@@ -2,9 +2,10 @@ package trivia
 
 import (
 	"encoding/json"
-	"github.com/sflewis2970/trivia-service/apis/trivia"
 	"log"
 	"net/http"
+
+	"github.com/sflewis2970/trivia-service/apis/trivia"
 
 	"github.com/sflewis2970/trivia-service/messages"
 	"github.com/sflewis2970/trivia-service/models"
@@ -23,26 +24,24 @@ type TriviaHandler struct {
 // to a category.
 // The request returns a QuestionResponse object.
 // The format for QuestionResponse is:
-//       {"questionid": "<random_id>",
-//        "question": "<question from trivia API>",
-//        "category": "<category is not required and could be blank>",
-//        "choices": "<choices are generated from API. One answer is correct, the others are incorrect>",
-//        "timestamp": "<formatted string of when the API returned the question>",
-//        "warning": "<optional warning message>",
-//        "error": "<optional error message>"}
+//
+//	{"questionid": "<random_id>",
+//	 "question": "<question from trivia API>",
+//	 "category": "<category is not required and could be blank>",
+//	 "choices": "<choices are generated from API. One answer is correct, the others are incorrect>",
+//	 "timestamp": "<formatted string of when the API returned the question>",
+//	 "warning": "<optional warning message>",
+//	 "error": "<optional error message>"}
 func (th *TriviaHandler) GetTriviaQuestion(rw http.ResponseWriter, r *http.Request) {
 	// Display a log message
-	log.Print("data received from client...")
-
-	// Get category from query parameter
-	category := r.URL.Query().Get("category")
+	log.Print("received trivia request from client...")
 
 	var qResponse messages.QuestionResponse
 
 	// Process API Get Request
-	triviaData, triviaErr := th.triviaAPI.GetTrivia(category)
+	triviaData, triviaErr := th.triviaAPI.GetTrivia()
 	if triviaErr != nil {
-		log.Print("Error encoding json...:", triviaErr)
+		log.Print("Error encoding json...: ", triviaErr)
 
 		// Update QuestionResponse struct
 		qResponse.Error = triviaErr.Error()
@@ -98,23 +97,30 @@ func (th *TriviaHandler) GetTriviaQuestion(rw http.ResponseWriter, r *http.Reque
 // The client is responding to question received from the trivia API.
 // The request uses the form of: 'http://<server-name>:8080//api/v1/trivia/questions' including a
 // json object:
-//        "questionid": "<id received in the question response>",
-//        "response": "<answer question from list of choices>"
+//
+//	"questionid": "<id received in the question response>",
+//	"response": "<answer question from list of choices>"
+//
 // The client will receive a response in the form of the following:
-//       "question": "<the question the client provided the answer for>",
-//       "timestamp": "<formatted string of when the API returned the question>",
-//       "category": "<if the question is linked to a category that information will be provided here>",
-//       "response": "<the response the client provided>",
-//       "answer": "<the answer to the question>",
-//       "message": "<message to client whether question was answered correctly>",
-//       "warning": "<optional warning message>",
-//       "error": "<optional error message>"
+//
+//	"question": "<the question the client provided the answer for>",
+//	"timestamp": "<formatted string of when the API returned the question>",
+//	"category": "<if the question is linked to a category that information will be provided here>",
+//	"response": "<the response the client provided>",
+//	"answer": "<the answer to the question>",
+//	"message": "<message to client whether question was answered correctly>",
+//	"warning": "<optional warning message>",
+//	"error": "<optional error message>"
 func (th *TriviaHandler) SubmitTriviaAnswer(rw http.ResponseWriter, r *http.Request) {
 	var aRequest messages.AnswerRequest
 	var aResponse messages.AnswerResponse
 
+	log.Print("request ID: ", aRequest.QuestionID)
+	log.Print("response: ", aRequest.Response)
+
 	// Read JSON from stream
 	decodeErr := json.NewDecoder(r.Body).Decode(&aRequest)
+
 	if decodeErr != nil {
 		log.Print("Error decoding json...: ", decodeErr)
 
@@ -129,9 +135,12 @@ func (th *TriviaHandler) SubmitTriviaAnswer(rw http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	log.Print("client sent response: ", aRequest.Response)
+	log.Print("looking up question in DB using ID: ", aRequest.QuestionID)
+
 	// Send a request to the model for the answer
 	var getErr error
-	aResponse, getErr = th.triviaModel.GetTriviaAnswer(aRequest)
+	aResponse, getErr = th.triviaModel.SubmitTriviaAnswer(aRequest)
 
 	if getErr != nil {
 		log.Print("Error getting trivia answer...: ", getErr)
@@ -145,6 +154,8 @@ func (th *TriviaHandler) SubmitTriviaAnswer(rw http.ResponseWriter, r *http.Requ
 		// Write JSON to stream
 		encodeResponse(rw, aResponse)
 		return
+	} else {
+		log.Print("Response: ", aResponse)
 	}
 
 	// Send a request to the model to delete the question
