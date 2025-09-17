@@ -2,6 +2,7 @@ package models
 
 import (
 	"log"
+	"strings"
 	"time"
 
 	"github.com/sflewis2970/trivia-service/common"
@@ -20,12 +21,14 @@ func (m *TriviaModel) AddTriviaQuestion(qRequest messages.Trivia) error {
 	if insertErr != nil {
 		errMsg := "Error inserting record...: "
 		log.Print(errMsg, insertErr)
+	} else {
+		log.Print("Successfully inserted trivia record")
 	}
 
 	return insertErr
 }
 
-func (m *TriviaModel) GetTriviaAnswer(aRequest messages.AnswerRequest) (messages.AnswerResponse, error) {
+func (m *TriviaModel) SubmitTriviaAnswer(aRequest messages.AnswerRequest) (messages.AnswerResponse, error) {
 	// AnswerResponse
 	var aResponse messages.AnswerResponse
 
@@ -33,6 +36,7 @@ func (m *TriviaModel) GetTriviaAnswer(aRequest messages.AnswerRequest) (messages
 	timestamp := common.GetFormattedTime(time.Now(), "Mon Jan 2 15:04:05 2006")
 
 	// Send request to get question from Redis cache
+	log.Print("getting question ID: ", aRequest.QuestionID)
 	triviaTable, getErr := m.redisModel.Get(aRequest.QuestionID)
 	if getErr != nil {
 		errMsg := "Get record error...: "
@@ -40,6 +44,7 @@ func (m *TriviaModel) GetTriviaAnswer(aRequest messages.AnswerRequest) (messages
 		aResponse.Error = errMsg
 		return aResponse, getErr
 	} else {
+		log.Print("getting question ID: ", aRequest.QuestionID)
 		// Build AnswerResponse message
 		if len(triviaTable.Question) > 0 {
 			aResponse.Question = triviaTable.Question
@@ -47,7 +52,9 @@ func (m *TriviaModel) GetTriviaAnswer(aRequest messages.AnswerRequest) (messages
 			aResponse.Answer = triviaTable.Answer
 			aResponse.Response = aRequest.Response
 			aResponse.Timestamp = timestamp
+			aRequest.Response = strings.ToUpper(aRequest.Response)
 
+			log.Print("checking response against trivia answer... ")
 			if aRequest.Response == triviaTable.Answer {
 				aResponse.Correct = true
 				aResponse.Message = m.cfgData.Messages.CongratsMsg
@@ -81,8 +88,10 @@ func NewTriviaModel() *TriviaModel {
 	model := new(TriviaModel)
 
 	// Get config data
+	// var cfgData *config.CfgData
 	var cfgDataErr error
-	model.cfgData, cfgDataErr = config.Get().GetData()
+	cfg := config.New()
+	model.cfgData, cfgDataErr = cfg.GetData()
 	if cfgDataErr != nil {
 		log.Print("Error getting config data: ", cfgDataErr)
 		return nil
