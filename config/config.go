@@ -2,10 +2,10 @@ package config
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"log"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/sflewis2970/trivia-service/common"
@@ -13,7 +13,7 @@ import (
 
 const BASE_DIR_NAME string = "trivia-service"
 const CFG_FILE_NAME = "./config/config.json"
-const UPDATE_CONFIG_DATA string = "update"
+const REFRESH_CONFIG_DATA string = "refresh"
 
 // Config variable keys
 const (
@@ -21,8 +21,9 @@ const (
 	ENV string = "ENV"
 
 	// HOST system info
-	HOST string = "HOST"
-	PORT string = "PORT"
+	HOST           string = "HOST"
+	PORT           string = "PORT"
+	NBR_OF_RETRIES string = "NBR_OF_RETRIES"
 
 	// REDIS_TLS_URL Redis Constants
 	REDIS_TLS_URL  string = "REDIS_TLS_URL"
@@ -35,6 +36,10 @@ const (
 const (
 	PRODUCTION string = "PROD"
 )
+
+type TriviaAPI struct {
+	NbrOfRetries int `json:"nbrOfRetries"`
+}
 
 type Redis struct {
 	TLS_URL  string `json:"tls_url"`
@@ -49,21 +54,23 @@ type Message struct {
 }
 
 type CfgData struct {
-	Env      string `json:"env"`
-	Host     string `json:"hostname"`
-	Port     string `json:"hostport"`
+	Env       string    `json:"env"`
+	Host      string    `json:"hostname"`
+	TriviaAPI TriviaAPI `json:"trivisapi"`
+	Port      string    `json:"hostport"`
+
 	Messages Message
 	Redis    Redis
 }
 
-type config struct {
+type Config struct {
 	cfgData *CfgData
 }
 
-var cfg *config
+var cfg *Config
 
 // Unexported type functions
-func (c *config) findBaseDir(currentDir string, targetDir string) int {
+func (c *Config) findBaseDir(currentDir string, targetDir string) int {
 	level := 0
 	dirs := strings.Split(currentDir, "\\")
 
@@ -79,7 +86,7 @@ func (c *config) findBaseDir(currentDir string, targetDir string) int {
 	return level
 }
 
-func (c *config) readConfigFile() error {
+func (c *Config) readConfigFile() error {
 	// Get working directory
 	wd, getErr := common.GetWorkingDir()
 	if getErr != nil {
@@ -99,7 +106,7 @@ func (c *config) readConfigFile() error {
 		levels--
 	}
 
-	data, readErr := ioutil.ReadFile(CFG_FILE_NAME)
+	data, readErr := os.ReadFile(CFG_FILE_NAME)
 	if readErr != nil {
 		return readErr
 	}
@@ -112,7 +119,7 @@ func (c *config) readConfigFile() error {
 	return nil
 }
 
-func (c *config) getConfigEnv() error {
+func (c *Config) getConfigEnv() error {
 	// Loading config environment variables
 	log.Print("loading config environment variables...")
 
@@ -121,6 +128,14 @@ func (c *config) getConfigEnv() error {
 	c.cfgData.Env = os.Getenv(ENV)
 	c.cfgData.Host = os.Getenv(HOST)
 	c.cfgData.Port = os.Getenv(PORT)
+	var convErr error
+	c.cfgData.TriviaAPI.NbrOfRetries, convErr = strconv.Atoi(os.Getenv(NBR_OF_RETRIES))
+	if convErr != nil {
+		log.Printf("Error converting string to number with...: %s\n", convErr.Error())
+		return convErr
+	} else {
+		log.Printf("Number of Retries: %d\n", c.cfgData.TriviaAPI.NbrOfRetries)
+	}
 
 	// Get response messages
 	c.cfgData.Messages.CongratsMsg = "Congratulations! That is correct"
@@ -165,9 +180,9 @@ func (c *config) getConfigEnv() error {
 	return nil
 }
 
-func (c *config) GetData(args ...string) (*CfgData, error) {
+func (c *Config) GetData(args ...string) (*CfgData, error) {
 	if len(args) > 0 {
-		if args[0] == UPDATE_CONFIG_DATA {
+		if args[0] == REFRESH_CONFIG_DATA {
 			useCfgFile := os.Getenv("USECONFIGFILE")
 			if len(useCfgFile) > 0 {
 				log.Print("Using config file to load config")
@@ -192,12 +207,12 @@ func (c *config) GetData(args ...string) (*CfgData, error) {
 	return c.cfgData, nil
 }
 
-func Get() *config {
+func New() *Config {
 	if cfg == nil {
 		log.Print("creating config object")
 
 		// Initialize config
-		cfg = new(config)
+		cfg = new(Config)
 
 		// Initialize config data
 		cfg.cfgData = new(CfgData)
@@ -206,4 +221,54 @@ func Get() *config {
 	}
 
 	return cfg
+}
+
+func SetEnvVars() error {
+	var envVarsErr error
+
+	// Set system environment variables
+	envVarsErr = os.Setenv(ENV, "")
+	if envVarsErr != nil {
+		log.Print("Error setting env variable")
+		return envVarsErr
+	}
+
+	envVarsErr = os.Setenv(HOST, "")
+	if envVarsErr != nil {
+		log.Print("Error setting env variable")
+		return envVarsErr
+	}
+
+	envVarsErr = os.Setenv(PORT, "8080")
+	if envVarsErr != nil {
+		log.Print("Error setting env variable")
+		return envVarsErr
+	}
+
+	envVarsErr = os.Setenv(NBR_OF_RETRIES, "3")
+	if envVarsErr != nil {
+		log.Print("Error setting env variable")
+		return envVarsErr
+	}
+
+	// Set redis cache server environment variables
+	envVarsErr = os.Setenv(REDIS_TLS_URL, "cache")
+	if envVarsErr != nil {
+		log.Print("Error setting env variable")
+		return envVarsErr
+	}
+
+	envVarsErr = os.Setenv(REDIS_URL, "cache")
+	if envVarsErr != nil {
+		log.Print("Error setting env variable")
+		return envVarsErr
+	}
+
+	envVarsErr = os.Setenv(REDIS_PORT, "6379")
+	if envVarsErr != nil {
+		log.Print("Error setting env variable")
+		return envVarsErr
+	}
+
+	return nil
 }
