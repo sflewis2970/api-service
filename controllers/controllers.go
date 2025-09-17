@@ -10,6 +10,7 @@ import (
 
 // Controller struct definition
 type Controller struct {
+	cfg           *config.Config
 	cfgData       *config.CfgData
 	Router        *mux.Router
 	triviaHandler *trivia.TriviaHandler
@@ -23,8 +24,8 @@ func (c *Controller) setupRoutes() {
 	log.Print("Setting up trivia service routes")
 
 	// Trivia routes
-	c.Router.HandleFunc("/api/v1/trivia/questions", c.triviaHandler.GetTriviaQuestion).Methods("GET")
-	c.Router.HandleFunc("/api/v1/trivia/questions", c.triviaHandler.SubmitTriviaAnswer).Methods("POST")
+	c.Router.HandleFunc("/api/v1/trivia/getquestion", c.triviaHandler.GetTriviaQuestion).Methods("GET")
+	c.Router.HandleFunc("/api/v1/trivia/submitanswer", c.triviaHandler.SubmitTriviaAnswer).Methods("POST")
 }
 
 // New Export functions
@@ -35,7 +36,8 @@ func New() *Controller {
 
 	// Load config data
 	var getCfgDataErr error
-	controller.cfgData, getCfgDataErr = config.Get().GetData()
+	controller.cfg = config.New()
+	controller.cfgData, getCfgDataErr = controller.cfg.GetData()
 	if getCfgDataErr != nil {
 		log.Print("Error getting config data: ", getCfgDataErr)
 		return nil
