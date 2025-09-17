@@ -3,17 +3,18 @@ package messages
 const MAKE_SELECTION_MSG string = "Make Selection from list..."
 
 const (
-	DASH    string = "-"
-	ONE_SET int    = 1
+	DASH      string = "-"
+	FIRST_SET int    = 1
 )
 
 type Trivia struct {
-	QuestionID string   `json:"questionid"`
-	Question   string   `json:"question"`
-	Category   string   `json:"category"`
-	Answer     string   `json:"answer"`
-	Choices    []string `json:"choices"`
-	Timestamp  string   `json:"timestamp"`
+	QuestionID    string   `json:"questionid"`
+	Question      string   `json:"question"`
+	Category      string   `json:"category"`
+	Answer        string   `json:"answer"`
+	Choices       []string `json:"choices"`
+	Timestamp     string   `json:"timestamp"`
+	NbrRequestAtt int      `json:"nbrrequestatt"`
 }
 
 type TriviaTable struct {
