@@ -1,88 +1,88 @@
 package trivia
 
 import (
+	"fmt"
 	"log"
 	"testing"
+
+	"github.com/sflewis2970/trivia-service/config"
 )
 
-func TestTriviaRequest(t *testing.T) {
-	// Create api object
-	api := New()
+func TestGetTrivia(t *testing.T) {
+	api := CreateNewAPI(t)
 
-	// Test cases
-	testCases := []struct {
-		category string
-	}{
-		{category: ""},
-		{category: "mathematics"},
-		{category: "sfl"},
+	if api == nil {
+		t.Errorf("Could not create api object with no error was returned")
+	} else {
+		triviaMsg, triviaErr := api.GetTrivia()
+		if triviaErr != nil {
+			t.Errorf("GetTrivia() returned an error: %s\n", triviaErr.Error())
+			if len(triviaMsg.Question) == 0 {
+				t.Error("Trivia msg doesn't contain a question")
+			}
+		} else {
+			fmt.Println("Trivia category: ", triviaMsg.Category)
+			fmt.Println("Trivia question: ", triviaMsg.Question)
+		}
 	}
+}
 
-	for _, tt := range testCases {
-		limitVal := 0
-		gotVals, gotTimestamp, gotError := api.triviaRequest(tt.category, limitVal)
+func TestReturnMultipleAnswers(t *testing.T) {
+	api := CreateNewAPI(t)
 
-		gotValsSize := len(gotVals)
-		categoryValSize := len(tt.category)
-
-		// Category and limit have empty values
-		if categoryValSize == 0 {
-			if gotError != nil {
-				t.Errorf("TriviaRequest(%v, %v): error not expected, got %v", tt.category, limitVal, gotError)
-			}
-
-			if gotValsSize != TriviaMaxRecordCount {
-				t.Errorf("TriviaRequest(%v, %v): did not return the correct number of records, got %d - expected: %d", tt.category, limitVal, gotValsSize, TriviaMaxRecordCount)
-			}
-
-			if len(gotTimestamp) == 0 {
-				t.Errorf("TriviaRequest(%v, %v): did not return a valid time stamp, got %s", tt.category, limitVal, gotTimestamp)
+	if api == nil {
+		t.Errorf("API object not created!")
+	} else {
+		answers, answersErr := api.returnMultipleAnswers(AnswerCount)
+		if answersErr != nil {
+			t.Errorf("error returned an error: %s\n", answersErr.Error())
+		} else {
+			nbrOfAnswers := len(answers)
+			for idx := 0; idx < nbrOfAnswers; idx++ {
+				fmt.Println("", answers[idx])
 			}
 		}
+	}
+}
 
-		// Category has a non-empty value
-		if categoryValSize > 0 && isItemInCategoryList(tt.category) {
-			if gotError != nil {
-				t.Errorf("TriviaRequest(%v, %v): error not expected, got %v", tt.category, limitVal, gotError)
-			}
+func TestNewAPI(t *testing.T) {
+	api := CreateNewAPI(t)
 
-			if gotValsSize != TriviaMaxRecordCount {
-				t.Errorf("TriviaRequest(%v, %v): did not return the correct number of records, got %d - expected: %d", tt.category, limitVal, gotValsSize, TriviaMaxRecordCount)
-			}
-
-			if len(gotTimestamp) == 0 {
-				t.Errorf("TriviaRequest(%v, %v): did not return a valid time stamp, got %s", tt.category, limitVal, gotTimestamp)
-			}
-		}
-
-		// Category has a non-empty value and the category is not list in the category list
-		if categoryValSize > 0 && !isItemInCategoryList(tt.category) {
-			if gotError != nil {
-				t.Errorf("TriviaRequest(%v, %v): error not expected, got %v", tt.category, limitVal, gotError)
-			}
-
-			if gotValsSize != EmptyRecordCount {
-				t.Errorf("TriviaRequest(%v, %v): did not return the correct number of records, got %d - expected: %d", tt.category, limitVal, gotValsSize, EmptyRecordCount)
-			}
-
-			if len(gotTimestamp) == 0 {
-				t.Errorf("TriviaRequest(%v, %v): did not return a valid time stamp, got %s", tt.category, limitVal, gotTimestamp)
-			}
-		}
+	if api == nil {
+		t.Errorf("api object is nil, cannot continue...")
+	} else {
+		fmt.Println("api object created")
 	}
 }
 
 func BenchmarkTriviaRequest(b *testing.B) {
 	api := New()
 
-	// benchmark
-	category := ""
-	limit := 0
-
-	for idx := 0; idx < b.N; idx++ {
-		_, _, requestErr := api.triviaRequest(category, limit)
-		if requestErr != nil {
-			log.Print("Error processing trivia request...", requestErr)
+	if api == nil {
+		b.Errorf("error api object is nil")
+	} else {
+		// benchmark
+		for idx := 0; idx < b.N; idx++ {
+			_, _, requestErr := api.triviaRequest()
+			if requestErr != nil {
+				log.Print("Error processing trivia request...", requestErr)
+			}
 		}
 	}
+}
+
+func CreateNewAPI(t *testing.T) *API {
+	envEnvErr := config.SetEnvVars()
+	if envEnvErr != nil {
+		t.Errorf("error attempting to set env vars, with error: %s", envEnvErr.Error())
+	} else {
+		api := New()
+		if api == nil {
+			t.Errorf("api object is nil, cannot continue...")
+		} else {
+			return api
+		}
+	}
+
+	return nil
 }

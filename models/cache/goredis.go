@@ -3,6 +3,7 @@ package cache
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log"
 	"time"
 
@@ -23,6 +24,7 @@ const (
 	REDIS_MARSHAL_ERROR        string = "Marshaling error...: "
 	REDIS_UNMARSHAL_ERROR      string = "Unmarshalling error...: "
 	REDIS_INSERT_ERROR         string = "Insert error...: "
+	REDIS_ITEM_FOUND           string = "Item found... "
 	REDIS_ITEM_NOT_FOUND_ERROR string = "Item not found...: "
 	REDIS_GET_ERROR            string = "Get error...: "
 	// REDIS_UPDATE_ERROR          string = "Update error..."
@@ -69,7 +71,9 @@ func (dm *DataModel) Insert(trivia messages.Trivia) error {
 		return marshalErr
 	}
 
-	log.Print("Adding a new record to map, ID: ", trivia.QuestionID)
+	log.Printf("\n")
+	log.Print("Adding a new record to DB, ID: ", trivia.QuestionID)
+	log.Printf("\n")
 	setErr := dm.memCache.Set(ctx, trivia.QuestionID, byteStream, time.Duration(0)).Err()
 	if setErr != nil {
 		log.Print(REDIS_DB_NAME_MSG+REDIS_INSERT_ERROR, setErr)
@@ -81,18 +85,21 @@ func (dm *DataModel) Insert(trivia messages.Trivia) error {
 
 // Get a single record from table
 func (dm *DataModel) Get(questionID string) (messages.TriviaTable, error) {
-	log.Print("Getting record from the map, with ID: ", questionID)
+	log.Print("Getting record from DB, with ID: ", questionID)
 
 	var tTable messages.TriviaTable
 	ctx := context.Background()
 	getResult, getErr := dm.memCache.Get(ctx, questionID).Result()
 	if getErr == redis.Nil {
-		log.Print(REDIS_DB_NAME_MSG + REDIS_ITEM_NOT_FOUND_ERROR)
-		return messages.TriviaTable{}, nil
+		errMsg := "Get error: " + REDIS_DB_NAME_MSG + REDIS_ITEM_NOT_FOUND_ERROR
+		log.Print(errMsg)
+		getErr := errors.New(errMsg)
+		return messages.TriviaTable{}, getErr
 	} else if getErr != nil {
 		log.Print(REDIS_DB_NAME_MSG+REDIS_GET_ERROR, getErr)
 		return messages.TriviaTable{}, getErr
 	} else {
+		log.Print("Get request results: " + REDIS_DB_NAME_MSG + REDIS_ITEM_FOUND)
 		unmarshalErr := json.Unmarshal([]byte(getResult), &tTable)
 		if unmarshalErr != nil {
 			log.Print(REDIS_DB_NAME_MSG+REDIS_UNMARSHAL_ERROR, unmarshalErr)

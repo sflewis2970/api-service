@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"testing"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/sflewis2970/trivia-service/messages"
 )
 
 func TestGetFormattedTime(t *testing.T) {
@@ -26,6 +29,22 @@ func TestGetFormattedTime(t *testing.T) {
 			t.Errorf("GetFormattedTime(%v, %v): expected results from the API call. Got: %s", tt.timeVal, tt.timeFormatVal, gotVal)
 		}
 	}
+}
+
+func TestBuildNewUUID(t *testing.T) {
+	newUUID := uuid.New().String()
+	if len(newUUID) == 0 {
+		t.Errorf("error: invalid format -- newUUID is empty.\n")
+	}
+
+	fmt.Print("newUUID: ", newUUID)
+
+	newID := BuildNewUUID(newUUID, messages.DASH, messages.FIRST_SET)
+	if len(newID) == 0 {
+		t.Errorf("error: invalid format -- newID is empty.\n")
+	}
+
+	fmt.Print("newID: ", newID)
 }
 
 func BenchmarkGetFormattedTime(b *testing.B) {

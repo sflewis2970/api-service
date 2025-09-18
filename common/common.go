@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -32,7 +33,7 @@ func GetWorkingDir() (string, error) {
 }
 
 // BuildUUID Build UUID string
-func BuildUUID(uuid string, delimiter string, nbrOfGroups int) string {
+func BuildNewUUID(uuid string, delimiter string, nbrOfGroups int) string {
 	newUUID := ""
 
 	uuidList := strings.Split(uuid, delimiter)
@@ -60,7 +61,7 @@ func CreateRequest(method string, url string, headers []HTTPHeader, httpBody io.
 	// Create new http request
 	request, requestErr := http.NewRequest(method, url, httpBody)
 	if requestErr != nil {
-		log.Print("A request error has occurred...")
+		log.Print("A request error has occurred...: ", requestErr)
 		return nil, requestErr
 	}
 
@@ -72,13 +73,31 @@ func CreateRequest(method string, url string, headers []HTTPHeader, httpBody io.
 	return request, nil
 }
 
-func ExecuteRequest(request *http.Request) (*http.Response, error) {
+func ExecuteRequest(request *http.Request) (string, *http.Response, error) {
 	// Get response from http request
+	log.Print("Performing Default Do command")
 	response, responseErr := http.DefaultClient.Do(request)
+	statusCodeStr := ProcessStatusCode(response.StatusCode)
 	if responseErr != nil {
-		log.Print("A response error has occurred...")
-		return nil, responseErr
+		errMsg := "Doing request command returned a response error, with status code: " + strconv.Itoa(response.StatusCode)
+		log.Print(errMsg)
+		return statusCodeStr, nil, responseErr
+	} else {
+		log.Print("Response: ", response)
 	}
 
-	return response, nil
+	return statusCodeStr, response, nil
+}
+
+func ProcessStatusCode(statusCode int) string {
+	switch statusCode {
+	case http.StatusBadRequest:
+		return "bad request, status code:...: " + strconv.Itoa(statusCode) + " "
+	case http.StatusUnauthorized:
+		return "unauthorized request, status code:...: " + strconv.Itoa(statusCode) + " "
+	case http.StatusInternalServerError:
+		return "internal server error, status code:...: " + strconv.Itoa(statusCode) + " "
+	default:
+		return "status code:...: " + strconv.Itoa(statusCode) + " "
+	}
 }

@@ -10,8 +10,8 @@ services:
       - cache:/data
 
   api-service:
-    image: sflewis/api-service
-    container_name: CNT-APIService
+    image: api-service
+    container_name: CNT-TriviaService
     depends_on: 
       - cache
     ports:
@@ -19,6 +19,7 @@ services:
     environment:
       HOST:
       PORT: 8080
+      NBR_OF_RETRIES: 3
       REDIS_TLS_URL: cache
       REDIS_URL: cache
       REDIS_PORT: 6379

@@ -14,9 +14,14 @@ func main() {
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 
 	// Get config data
-	cfgData, cfgDataErr := config.Get().GetData(config.UPDATE_CONFIG_DATA)
-	if cfgDataErr != nil {
-		log.Fatal("Error getting config data: ", cfgDataErr)
+	cfg := config.New()
+	var cfgData *config.CfgData
+	var cfgDataErr error
+	if cfg != nil {
+		cfgData, cfgDataErr = cfg.GetData(config.REFRESH_CONFIG_DATA)
+		if cfgDataErr != nil {
+			log.Fatal("Error getting config data: ", cfgDataErr)
+		}
 	}
 
 	// Create controller

@@ -1,5 +1,5 @@
-# Base the image off of the lastest version of 1.18
-FROM golang:1.18
+# Base the image off of the lastest version of 1.25
+FROM golang:1.25
 
 # Make the detsination directory
 RUN mkdir -p /home/app
