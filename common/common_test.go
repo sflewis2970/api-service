@@ -33,11 +33,18 @@ func TestGetFormattedTime(t *testing.T) {
 
 func TestBuildNewUUID(t *testing.T) {
 	newUUID := uuid.New().String()
+	if len(newUUID) == 0 {
+		t.Errorf("error: invalid format -- newUUID is empty.\n")
+	}
+
 	fmt.Print("newUUID: ", newUUID)
 
 	newID := BuildNewUUID(newUUID, messages.DASH, messages.FIRST_SET)
-	fmt.Print("newID: ", newID)
+	if len(newID) == 0 {
+		t.Errorf("error: invalid format -- newID is empty.\n")
+	}
 
+	fmt.Print("newID: ", newID)
 }
 
 func BenchmarkGetFormattedTime(b *testing.B) {
