@@ -63,9 +63,11 @@ trivia Service Strtup:
 <img width="984" height="453" alt="Ttrivia-Service startup" src="https://github.com/user-attachments/assets/7e9f1ad2-3e53-4bc8-8bf7-5d9d17e081c0" />
 
 Get Request:
+the get request will return "questionid" which is needed for th post request, "category", "question", and "choices". one of the choics is th correct answer.
 <img width="918" height="950" alt="Ttrivia-Service request   response" src="https://github.com/user-attachments/assets/e1ea69b7-9352-42fe-be5c-6536f1f271ca" />
 
 Post Request & Response:
+when sending the post request include the "questionid" included in the get request. Once tghe answer id processed the question deleted from the DB (whether teh client provides right answer or not).
 <img width="981" height="400" alt="Ttrivia-Service post response   response logs" src="https://github.com/user-attachments/assets/53c77120-a6e5-4dd2-8c7c-1e9ee563286e" />
 
 Post Request (wrong answer) & RFesponse:
@@ -88,36 +90,4 @@ Convenience binary of released source artifacts: https://netbeans.apache.org/dow
 Bugs should be reported to https://issues.apache.org/jira/projects/NETBEANS/issues/
 
 ### Full History
-
-The origins of the code in this repository are older than its Apache existence.
-As such significant part of the history (before the code was donated to Apache)
-is kept in an independent repository. To fully understand the code
-you may want to merge the modern and ancient versions together:
-
-```bash
-$ git clone https://github.com/apache/incubator-netbeans.git
-$ cd incubator-netbeans
-$ git log uihandler/arch.xml
-```
-
-This gives you just few log entries including the initial checkin and
-change of the file headers to Apache. But then the magic comes:
-
-```bash
-$ git remote add emilian https://github.com/emilianbold/netbeans-releases.git
-$ git fetch emilian # this takes a while, the history is huge!
-$ git replace 6daa72c98 32042637 # the 1st donation
-$ git replace 6035076ee 32042637 # the 2nd donation
-```
-
-When you search the log, or use the blame tool, the full history is available:
-
-```bash
-$ git log uihandler/arch.xml
-$ git blame uihandler/arch.xml
-```
-
-Many thanks to Emilian Bold who converted the ancient history to his
-[Git repository](https://github.com/emilianbold/netbeans-releases)
-and made the magic possible!
 
