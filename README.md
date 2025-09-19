@@ -63,31 +63,23 @@ trivia Service Strtup:
 <img width="984" height="453" alt="Ttrivia-Service startup" src="https://github.com/user-attachments/assets/7e9f1ad2-3e53-4bc8-8bf7-5d9d17e081c0" />
 
 Get Request:
-the get request will return "questionid" which is needed for th post request, "category", "question", and "choices". one of the choics is th correct answer.
+the get request will return "questionid" which is needed for th post request. The get request alsop returns "category", "question", and "choices". One of the choices is th correct answer.
 <img width="918" height="950" alt="Ttrivia-Service request   response" src="https://github.com/user-attachments/assets/e1ea69b7-9352-42fe-be5c-6536f1f271ca" />
 
 Post Request & Response:
-when sending the post request include the "questionid" included in the get request. Once tghe answer id processed the question deleted from the DB (whether teh client provides right answer or not).
+When sending the post request include the "questionid" included in the get request response. Once the answer is processed the question is deleted from the DB (whether the client provides right answer or not).
 <img width="981" height="400" alt="Ttrivia-Service post response   response logs" src="https://github.com/user-attachments/assets/53c77120-a6e5-4dd2-8c7c-1e9ee563286e" />
 
-Post Request (wrong answer) & RFesponse:
+Post Request (wrong answer) & Response:
 <img width="970" height="495" alt="Ttrivia-Service post response   response bad answer logs" src="https://github.com/user-attachments/assets/a2c26ff3-6cdc-4705-a8e8-aaca58c7bfc4" />
 
 Post Request (not found) & RFesponse:
 <img width="914" height="900" alt="Ttrivia-Service post response   response -- not found" src="https://github.com/user-attachments/assets/179d9461-3549-4297-b451-3ca7b9d37056" />
 <img width="981" height="282" alt="Ttrivia-Service post response   response -- not found logs" src="https://github.com/user-attachments/assets/80279a8a-e3b9-4ab9-848a-be19d8119ac2" />
 
-
-
-### Download
-
-Developer builds can be downloaded: https://builds.apache.org/job/incubator-netbeans-linux.
-
-Convenience binary of released source artifacts: https://netbeans.apache.org/download/index.html.
-
 ### Reporting Bugs
 
-Bugs should be reported to https://issues.apache.org/jira/projects/NETBEANS/issues/
+Bugs should be reported to https://github.com/sflewis2970/api-service/issues
 
 ### Full History
 
