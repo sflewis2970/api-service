@@ -27,7 +27,6 @@ Currently there are only two APIs available for processing
 Get, "/api/v1/trivia/getquestion" -- request trivia question
 Post, "/api/v1/trivia/submitanswer" -- post trivia question answer
 
-### Build status
 
 ### Requirements
   * Git
