@@ -10,7 +10,7 @@ services:
       - cache:/data
 
   api-service:
-    image: api-service
+    image: sflewis/api-service
     container_name: CNT-TriviaService
     depends_on: 
       - cache
