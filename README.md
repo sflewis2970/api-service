@@ -48,7 +48,7 @@ $ docker build -t api-service .
 Make sure the current directory includes the Dockerfile file. The Dockerfile includes all the instructions for building the api-service image.
 
 ### Running API-Service
-The compose.yml already has all the settings ro pull from Docker Hub. If changes are made then re-build the api-service image then run the folloeing command:
+The compose.yml already has all the settings to pull from Docker Hub. If changes are made then re-build the api-service image then run the folloeing command:
 ```
 $ docker-compose up
 ```
