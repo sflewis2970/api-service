@@ -22,15 +22,17 @@
 
 # api-service
 
-API-Serice is a tool for processing dfferent APIs.
+API-Serice is a tool for processing different APIs.
 Currently there are only two APIs available for processing
 Get, "/api/v1/trivia/getquestion" -- request trivia question
+get request returns "questionid", "category", "question", and "choices" (one of the choices isd the correct answer)
 Post, "/api/v1/trivia/submitanswer" -- post trivia question answer
+send "questionid" and "response" in the post request
 
 
 ### Requirements
   * Git
-  * Docker
+  * Docker 4.19.0 (is the version being used)
   * VCisual Studio Code (or any editor that supports Golang add-ons or extensions)
   * Golang 1.25
   * Redia Server 7.0 or higher
